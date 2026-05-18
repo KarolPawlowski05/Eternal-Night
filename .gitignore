@@ -1,0 +1,29 @@
+# Folder wyjściowy kompilacji (Qt / CMake / VS)
+build/
+build-*/
+out/
+x64/
+Debug/
+Release/
+
+# Pliki wykonywalne i binarne
+*.exe
+*.dll
+*.so
+*.dylib
+*.o
+*.obj
+*.a
+*.lib
+
+# Pliki projektowe IDE (które generują się lokalnie)
+.vs/
+*.user
+*.suo
+*.ncb
+*.userosmeta
+*.sln.docstates
+
+# Systemowe śmieci
+.DS_Store
+Thumbs.db
