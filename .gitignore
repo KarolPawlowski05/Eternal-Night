@@ -1,29 +1,30 @@
-# Folder wyjściowy kompilacji (Qt / CMake / VS)
+*.user
+*.user.*
+
 build/
 build-*/
-out/
-x64/
-Debug/
-Release/
+build_*/
 
-# Pliki wykonywalne i binarne
+CMakeCache.txt
+CMakeFiles/
+CMakeScripts/
+Testing/
+Makefile
+cmake_install.cmake
+install_manifest.txt
+compile_commands.json
+.cmake/
+
 *.exe
 *.dll
 *.so
 *.dylib
-*.o
-*.obj
 *.a
 *.lib
+*.o
+*.obj
 
-# Pliki projektowe IDE (które generują się lokalnie)
-.vs/
-*.user
-*.suo
-*.ncb
-*.userosmeta
-*.sln.docstates
-
-# Systemowe śmieci
-.DS_Store
 Thumbs.db
+.DS_Store
+.vscode/
+.idea/
