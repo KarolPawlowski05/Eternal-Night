@@ -1,5 +1,6 @@
 #include "Engine.h"
 #include "Player.h"
+#include "Projectile.h"
 #include <algorithm>
 
 Engine::Engine() {
@@ -25,6 +26,15 @@ void Engine::handleEvents() {
 }
 
 void Engine::update(float deltaTime) {
+    // Tworzenie pocisku
+    if(player->getWantsToShootSpecial()) {
+        sf::Vector2f spawnPos = player->getPosition();
+        sf::Vector2f dir = player->getLastDirection();
+
+        gameObjects.push_back(std::make_shared<Projectile>(spawnPos.x, spawnPos.y, dir));
+
+        player->resetSpecialShot();
+    }
     // Aktualizacja wszystkich obiektów w grze
     for(auto& obj : gameObjects) {
         if(obj->isActive()) {
