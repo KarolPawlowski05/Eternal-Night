@@ -1,7 +1,10 @@
 #include "Engine.h"
 #include "Player.h"
 #include "Projectile.h"
+#include "Enemy.h"
 #include <algorithm>
+#include <cstdlib>
+#include <memory>
 
 Engine::Engine() {
     // Rozmiar okna
@@ -69,6 +72,49 @@ void Engine::run() {
 
         handleEvents();
         update(deltaTime);
+
+        //Automatyczny spawn wrogów co 2 sekundy
+        if(spawnClock.getElapsedTime().asSeconds()>=2.0f){
+            spawnEnemy();
+            spawnClock.restart();
+        }
         render();
     }
 }
+
+void Engine::spawnEnemy(){
+    int krawedz = rand() % 4;
+    float spawnX = 0;
+    float spawnY = 0;
+
+    //Losowanie krawedzi ekranu
+    if(krawedz == 0){ //Góra
+        spawnX = rand() % 1280;
+        spawnY = 40.f;
+    }
+    else if(krawedz == 1){ //Dół
+        spawnX = rand() % 1280;
+        spawnY = 680.f;
+    }
+    else if(krawedz == 2){ //Lewo
+        spawnX = 40.f;
+        spawnY = rand() % 720;
+    }
+    else{ //Prawo
+        spawnX = 1240.f;
+        spawnY = rand() % 720;
+    }
+
+    int losowyTyp = rand() % 3;
+    EnemyType typ;
+    if (losowyTyp == 0) typ = EnemyType::TRUPOJADY;
+    else if (losowyTyp == 1) typ = EnemyType::UPIOR;
+    else typ = EnemyType::OGROWATE;
+
+    // Tworzenie nowego wroga za pomoca shared_ptr
+    auto newEnemy = std::make_shared<Enemy>(spawnX, spawnY, typ);
+
+    // Dodanie wroga do wspolnego kontenera obiektów gry
+    gameObjects.push_back(newEnemy);
+}
+

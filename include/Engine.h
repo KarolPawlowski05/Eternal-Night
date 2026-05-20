@@ -12,6 +12,7 @@ class Engine {
 private:
     sf::RenderWindow window;
     sf::Clock clock; // Do obliczania deltaTime
+    sf::Clock spawnClock; // Odlicza czas do kolejnego spawnu
 
     std::vector<std::shared_ptr<GameObject>> gameObjects; // Głowny kontener na wszystkie obiekty gry
     std::shared_ptr<Player> player; // Bezpośredni dostęp do gracza
@@ -19,6 +20,7 @@ private:
     void handleEvents();
     void update(float deltaTime);
     void render();
+    void spawnEnemy();
 
 public:
     Engine();
