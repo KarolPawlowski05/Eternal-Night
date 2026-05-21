@@ -112,7 +112,7 @@ void Engine::spawnEnemy(){
     else typ = EnemyType::OGROWATE;
 
     // Tworzenie nowego wroga za pomoca shared_ptr
-    auto newEnemy = std::make_shared<Enemy>(spawnX, spawnY, typ);
+    auto newEnemy = std::make_shared<Enemy>(spawnX, spawnY, typ, player);
 
     // Dodanie wroga do wspolnego kontenera obiektów gry
     gameObjects.push_back(newEnemy);

@@ -1,6 +1,9 @@
 #ifndef ENEMY_H
 #define ENEMY_H
 #include "GameObject.h"
+#include <memory>
+
+class Player;
 
 enum class EnemyType {TRUPOJADY, UPIOR, OGROWATE}; //Typy wrogow
 
@@ -9,9 +12,10 @@ private:
     sf::RectangleShape sprite; //Wizualna reprezentacja przeciwnika
     float speed; //Predkosc wroga
     EnemyType type; //Typ wroga
+    std::shared_ptr<Player> target;
 
 public:
-    Enemy(float x, float y, EnemyType enemytype);
+    Enemy(float x, float y, EnemyType enemytype,std::shared_ptr<Player> playerTarget);
 
     //nadpisanie metod wirtualnych z klasy bazowej GameObject
     void update(float deltaTime) override;
