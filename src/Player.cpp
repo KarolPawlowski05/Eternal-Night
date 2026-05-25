@@ -1,6 +1,7 @@
 #include "Player.h"
+#include <iostream>
 
-Player::Player(float x, float y) : GameObject(x, y), speed(250.f), lastDirection(0.f, -1.f), attackSize(60.f, 60.f), attackCooldown(3.0f), attackTimer(0.f), attackDuration(0.1f), durationTimer(0.f), isAttacking(false), specialCooldown(10.0f), specialTimer(10.0f), wantsToShootSpecial(false), dashSpeed(650.f), dashCooldown(2.0f), dashTimer(2.0f), dashDuration(0.25f), dashDurationTimer(0.f), isDashing(false) {
+Player::Player(float x, float y) : GameObject(x, y), hp(100), maxHp(100), invincibilityTimer(0.f), speed(250.f), lastDirection(0.f, -1.f), attackSize(60.f, 60.f), attackCooldown(3.0f), attackTimer(0.f), attackDuration(0.1f), durationTimer(0.f), isAttacking(false), specialCooldown(10.0f), specialTimer(10.0f), wantsToShootSpecial(false), dashSpeed(650.f), dashCooldown(2.0f), dashTimer(2.0f), dashDuration(0.25f), dashDurationTimer(0.f), isDashing(false) {
     // Konfiguracja gracza
     sprite.setSize(sf::Vector2f(40.f, 40.f));
     sprite.setFillColor(sf::Color::Blue);
@@ -13,6 +14,15 @@ Player::Player(float x, float y) : GameObject(x, y), speed(250.f), lastDirection
     attackIndicator.setFillColor(sf::Color(255, 0, 0, 40));
 }
 
+void Player::takeDamage(int amount) {
+    // Jeśli gracz robi unik lub ma aktywną nietykalność, nie otrzymuje obrażeń
+    if(!isDashing && invincibilityTimer <= 0.f) {
+        hp -= amount;
+        invincibilityTimer = 1.0f; // 1 sekunda nietykalności
+        if(hp < 0) hp = 0; // Zabezpieczenie przed ujemnym HP
+    }
+}
+
 void Player::castAttack() {
     isAttacking = true;
     durationTimer = attackDuration;
@@ -21,6 +31,19 @@ void Player::castAttack() {
 }
 
 void Player::update(float deltaTime) {
+    // Nietykalność gracza
+    if(invincibilityTimer > 0.f) {
+        invincibilityTimer -= deltaTime;
+        // Efekt migania gracza WIP
+        if(static_cast<int>(invincibilityTimer * 10) % 2 == 0) {
+            sprite.setFillColor(sf::Color(0, 0, 255, 100));
+        } else {
+            sprite.setFillColor(sf::Color::Blue);
+        }
+    } else if(!isDashing) {
+        sprite.setFillColor(sf::Color::Blue);
+    }
+
     // Timer ataku
     attackTimer += deltaTime;
     specialTimer += deltaTime;
