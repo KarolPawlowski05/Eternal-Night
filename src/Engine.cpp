@@ -45,6 +45,37 @@ void Engine::update(float deltaTime) {
         }
     }
 
+    // System kolizji
+    for(auto& obj : gameObjects) {
+        if(!obj->isActive()) continue;
+
+        // Rzutowanie obiektu na wroga
+        auto enemy = dynamic_cast<Enemy*>(obj.get());
+        if(enemy) {
+            // Kolizja: Gracz - Wróg
+            if(player->getBounds().intersects(enemy->getBounds())) {
+                player->takeDamage(10); // WIP
+            }
+
+            // Kolizja: Atak obszarowy gracza - Wróg
+            if(player->getIsAttacking() && player->getAttackBounds().intersects(enemy->getBounds())) {
+                enemy->takeDamage(10); // WIP
+            }
+
+            // Kolizja: Kusza - Wróg
+            for(auto& otherObj : gameObjects) {
+                if(!otherObj->isActive()) continue;
+
+                auto projectile = dynamic_cast<Projectile*>(otherObj.get());
+                if(projectile) {
+                    if(projectile->getBounds().intersects(enemy->getBounds())) {
+                        enemy->takeDamage(20); // WIP
+                    }
+                }
+            }
+        }
+    }
+
     // Usuwanie nieaktywnych obiektów
     gameObjects.erase(
         std::remove_if(gameObjects.begin(), gameObjects.end(),

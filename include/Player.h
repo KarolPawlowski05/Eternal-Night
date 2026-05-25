@@ -12,6 +12,11 @@ private:
     float speed;                        // Prędkość liniowa w px/s
     sf::Vector2f lastDirection;         // Ostatni kierunek ruchu
 
+    // HP
+    int hp;
+    int maxHp;
+    float invincibilityTimer;
+
     // Unik
     float dashSpeed;
     float dashCooldown;
@@ -40,6 +45,8 @@ public:
     void update(float deltaTime) override;
     void draw(sf::RenderWindow& window) override;
     sf::FloatRect getBounds() const override;
+
+    void takeDamage(int amount);
 
     sf::FloatRect getAttackBounds() const;
     bool getIsAttacking() const { return isAttacking ; }
