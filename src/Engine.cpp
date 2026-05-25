@@ -2,6 +2,8 @@
 #include "Player.h"
 #include "Projectile.h"
 #include "Enemy.h"
+#include "Bonus.h"
+#include "Obstacle.h"
 #include <algorithm>
 #include <cstdlib>
 #include <memory>
@@ -14,6 +16,32 @@ Engine::Engine() {
     player = std::make_shared<Player>(640.f, 360.f);
     // Gracz do kontenera obiektów gry
     gameObjects.push_back(player);
+    // --- LOSOWE GENEROWANIE PRZESZKÓD ---
+    for (int i = 0; i < 10; ++i) {
+        float randX = rand() % 1200 + 40; // Losowanie żeby nie wystawały poza ekran
+        float randY = rand() % 640 + 40;
+        int randType = rand() % 3;
+
+        ObstacleType type;
+        if (randType == 0) type = ObstacleType::DRZEWO;
+        else if (randType == 1) type = ObstacleType::KRZAK;
+        else type = ObstacleType::GLAZ;
+
+        gameObjects.push_back(std::make_shared<Obstacle>(randX, randY, type));
+    }
+
+    // --- LOSOWE GENEROWANIE BONUSÓW ---
+    for (int i = 0; i < 5; ++i) {
+        float randX = rand() % 1200 + 40;
+        float randY = rand() % 640 + 40;
+        int randType = rand() % 2;
+
+        BonusType type;
+        if (randType == 0) type = BonusType::XP_CRYSTAL;
+        else type = BonusType::POTION;
+
+        gameObjects.push_back(std::make_shared<Bonus>(randX, randY, type));
+    }
 }
 
 void Engine::handleEvents() {
@@ -70,12 +98,65 @@ void Engine::update(float deltaTime) {
                 if(projectile) {
                     if(projectile->getBounds().intersects(enemy->getBounds())) {
                         enemy->takeDamage(20); // WIP
+                        projectile->destroy();
+                    }
+                }
+            }
+        }
+        //Kolizje z Bonusem
+        auto bonus = dynamic_cast<Bonus*>(obj.get());
+        if(bonus) {
+            if(player->getBounds().intersects(bonus->getBounds())) {
+                bonus->destroy(); // Zebranie bonusu
+
+            }
+        }
+
+        //Kolizje z Przeszkodą
+        auto obstacle = dynamic_cast<Obstacle*>(obj.get());
+        if(obstacle) {
+            sf::FloatRect obsBounds = obstacle->getBounds();
+            sf::FloatRect intersection; // Zmienna przechowująca pole nałożenia się obiektów
+
+            // Kolizja: Gracz - Przeszkoda
+            if(player->getBounds().intersects(obsBounds, intersection)) {
+                sf::Vector2f newPos = player->getPosition();
+
+                // Sprawdzamy, z której strony wypchnąć gracza (tam gdzie głębokość wejścia w obiekt jest mniejsza)
+                if(intersection.width < intersection.height) {
+                    // Wypychanie w poziomie
+                    if(player->getBounds().left < obsBounds.left) newPos.x -= intersection.width;
+                    else newPos.x += intersection.width;
+                } else {
+                    // Wypychanie w pionie
+                    if(player->getBounds().top < obsBounds.top) newPos.y -= intersection.height;
+                    else newPos.y += intersection.height;
+                }
+                player->setPosition(newPos); // Fizyczne wypchnięcie gracza
+            }
+
+            // Kolizja: Wróg - Przeszkoda
+            for(auto& otherObj : gameObjects) {
+                if(!otherObj->isActive()) continue;
+                auto otherEnemy = dynamic_cast<Enemy*>(otherObj.get());
+                if(otherEnemy) {
+                    sf::FloatRect enemyIntersection;
+                    if(otherEnemy->getBounds().intersects(obsBounds, enemyIntersection)) {
+                        sf::Vector2f newEnemyPos = otherEnemy->getPosition();
+
+                        if(enemyIntersection.width < enemyIntersection.height) {
+                            if(otherEnemy->getBounds().left < obsBounds.left) newEnemyPos.x -= enemyIntersection.width;
+                            else newEnemyPos.x += enemyIntersection.width;
+                        } else {
+                            if(otherEnemy->getBounds().top < obsBounds.top) newEnemyPos.y -= enemyIntersection.height;
+                            else newEnemyPos.y += enemyIntersection.height;
+                        }
+                        otherEnemy->setPosition(newEnemyPos); // Fizyczne wypchnięcie wroga
                     }
                 }
             }
         }
     }
-
     // Usuwanie nieaktywnych obiektów
     gameObjects.erase(
         std::remove_if(gameObjects.begin(), gameObjects.end(),

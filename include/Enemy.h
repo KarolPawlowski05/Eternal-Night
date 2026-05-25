@@ -25,6 +25,7 @@ public:
     void draw(sf::RenderWindow& window) override;
     sf::FloatRect getBounds() const override;
     void takeDamage(int amount);
+    void setPosition(sf::Vector2f newPos) { position = newPos; sprite.setPosition(position); }
 };
 
 #endif

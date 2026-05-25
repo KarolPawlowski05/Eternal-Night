@@ -57,6 +57,7 @@ public:
 
     sf::Vector2f getPosition() const { return position; }
     sf::Vector2f getLastDirection() const { return lastDirection; }
+    void setPosition(sf::Vector2f newPos) { position = newPos; sprite.setPosition(position); }
 };
 
 #endif
