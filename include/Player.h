@@ -17,6 +17,9 @@ private:
     int maxHp;
     float invincibilityTimer;
 
+    sf::RectangleShape hpBarBackground;
+    sf::RectangleShape hpBarForeground;
+
     // Unik
     float dashSpeed;
     float dashCooldown;

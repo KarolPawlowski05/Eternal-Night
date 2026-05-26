@@ -15,8 +15,12 @@ private:
     std::shared_ptr<Player> target;
 
     int hp;
+    int maxHp;
     float damageCooldown; // Żeby atak obszarowy/kusza nie zadawały obrażeń co klatkę
     sf::Color baseColor;  // Do przywracania koloru po "błysku" otrzymania obrażeń
+
+    sf::RectangleShape hpBarBackground; // Czarne tło paska HP
+    sf::RectangleShape hpBarForeground; // Czerwony pasek HP
 public:
     Enemy(float x, float y, EnemyType enemytype,std::shared_ptr<Player> playerTarget);
 
@@ -24,7 +28,9 @@ public:
     void update(float deltaTime) override;
     void draw(sf::RenderWindow& window) override;
     sf::FloatRect getBounds() const override;
+
     void takeDamage(int amount);
+    int getXpReward() const; // Zwraca ilość XP do wypadnięcia
     void setPosition(sf::Vector2f newPos) { position = newPos; sprite.setPosition(position); }
 };
 

@@ -4,6 +4,7 @@
 #include "Enemy.h"
 #include "Bonus.h"
 #include "Obstacle.h"
+#include "XpCrystal.h"
 #include <algorithm>
 #include <cstdlib>
 #include <memory>
@@ -88,6 +89,10 @@ void Engine::update(float deltaTime) {
             // Kolizja: Atak obszarowy gracza - Wróg
             if(player->getIsAttacking() && player->getAttackBounds().intersects(enemy->getBounds())) {
                 enemy->takeDamage(10); // WIP
+
+                if(!enemy->isActive()) {
+                    gameObjects.push_back(std::make_shared<XpCrystal>(enemy->getPosition().x, enemy->getPosition().y, enemy->getXpReward()));
+                }
             }
 
             // Kolizja: Kusza - Wróg
@@ -98,6 +103,11 @@ void Engine::update(float deltaTime) {
                 if(projectile) {
                     if(projectile->getBounds().intersects(enemy->getBounds())) {
                         enemy->takeDamage(20); // WIP
+
+                        if(!enemy->isActive()) {
+                            gameObjects.push_back(std::make_shared<XpCrystal>(enemy->getPosition().x, enemy->getPosition().y, enemy->getXpReward()));
+                        }
+
                         projectile->destroy();
                     }
                 }
