@@ -33,12 +33,59 @@ Engine::Engine() {
         gameObjects.push_back(std::make_shared<Obstacle>(randX, randY, type));
     }
 
-    // Losowe mikstury
+    // Losowe mikstury (zabezpieczone przed respieniem sie w terenie)
     for (int i = 0; i < 3; ++i) {
-        float randX = rand() % 1200 + 40;
-        float randY = rand() % 640 + 40;
-        int randType = rand() % 2;
-        gameObjects.push_back(std::make_shared<Bonus>(randX, randY, BonusType::POTION));
+        bool isColliding = true;
+        std::shared_ptr<Bonus> newPotion;
+
+        // Pętla będzie losować tak długo aż znajdzie wolne miejsce
+        while (isColliding) {
+            float randX = rand() % 1200 + 40;
+            float randY = rand() % 640 + 40;
+
+            // Tworzymy testową miksturę na wylosowanych kordach
+            newPotion = std::make_shared<Bonus>(randX, randY, BonusType::POTION);
+
+            isColliding = false;
+
+            for (const auto& obj : gameObjects) {
+                if (newPotion->getBounds().intersects(obj->getBounds())) {
+                    isColliding = true;
+                    break;              // Przerywamy pętlę i losujemy pozycję od nowa
+                }
+            }
+        }
+
+        // Gdy program wyjdzie z pętli while oznacza to że znalazł bezpieczne miejsce.
+        gameObjects.push_back(newPotion);
+    }
+    currentState = GameState::PLAYING;
+
+    // Ładowanie czcionki i tworzenie kart ulepszeń
+    if(font.loadFromFile("arial.ttf")) {
+        textTitle.setFont(font);
+        textTitle.setString("AWANS! WYBIERZ ULEPSZENIE");
+        textTitle.setCharacterSize(40);
+        textTitle.setFillColor(sf::Color::White);
+        textTitle.setPosition(350.f, 100.f);
+
+        // Karta 1
+        card1.setSize(sf::Vector2f(250.f, 350.f));
+        card1.setPosition(200.f, 200.f);
+        card1.setFillColor(sf::Color(50, 100, 50));
+        textCard1.setFont(font); textCard1.setString("+20 Max HP\n& Leczenie"); textCard1.setCharacterSize(24); textCard1.setPosition(220.f, 350.f);
+
+        // Karta 2
+        card2.setSize(sf::Vector2f(250.f, 350.f));
+        card2.setPosition(500.f, 200.f);
+        card2.setFillColor(sf::Color(50, 50, 100));
+        textCard2.setFont(font); textCard2.setString("+15% Szybkosci\nRuchu"); textCard2.setCharacterSize(24); textCard2.setPosition(520.f, 350.f);
+
+        // Karta 3
+        card3.setSize(sf::Vector2f(250.f, 350.f));
+        card3.setPosition(800.f, 200.f);
+        card3.setFillColor(sf::Color(100, 50, 50));
+        textCard3.setFont(font); textCard3.setString("-10% Czasu\nOdnowienia\nAtaku"); textCard3.setCharacterSize(24); textCard3.setPosition(820.f, 350.f);
     }
 }
 
@@ -51,7 +98,22 @@ void Engine::handleEvents() {
         if(event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Escape) {
             window.close();
         }
+        // Obsługa kliknięć w menu awansu
+        if (currentState == GameState::LEVEL_UP && event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left) {
+            sf::Vector2f mousePos = window.mapPixelToCoords(sf::Mouse::getPosition(window));
+
+            if (card1.getGlobalBounds().contains(mousePos)) {
+                player->applyUpgrade(1);
+                currentState = GameState::PLAYING;
+            } else if (card2.getGlobalBounds().contains(mousePos)) {
+                player->applyUpgrade(2);
+                currentState = GameState::PLAYING;
+            } else if (card3.getGlobalBounds().contains(mousePos)) {
+                player->applyUpgrade(3);
+                currentState = GameState::PLAYING;
+            }
     }
+}
 }
 
 void Engine::update(float deltaTime) {
@@ -75,6 +137,7 @@ void Engine::update(float deltaTime) {
         }
     }
 
+    std::vector<std::shared_ptr<GameObject>> newObjects;
     // System kolizji
     for(auto& obj : gameObjects) {
         if(!obj->isActive()) continue;
@@ -92,7 +155,7 @@ void Engine::update(float deltaTime) {
                 enemy->takeDamage(10); // WIP
 
                 if(!enemy->isActive()) {
-                    gameObjects.push_back(std::make_shared<XpCrystal>(enemy->getPosition().x, enemy->getPosition().y, enemy->getXpReward()));
+                    newObjects.push_back(std::make_shared<XpCrystal>(enemy->getPosition().x, enemy->getPosition().y, enemy->getXpReward()));
                 }
             }
 
@@ -106,7 +169,7 @@ void Engine::update(float deltaTime) {
                         enemy->takeDamage(20); // WIP
 
                         if(!enemy->isActive()) {
-                            gameObjects.push_back(std::make_shared<XpCrystal>(enemy->getPosition().x, enemy->getPosition().y, enemy->getXpReward()));
+                            newObjects.push_back(std::make_shared<XpCrystal>(enemy->getPosition().x, enemy->getPosition().y, enemy->getXpReward()));
                         }
 
                         projectile->destroy();
@@ -119,8 +182,8 @@ void Engine::update(float deltaTime) {
         auto xp = dynamic_cast<XpCrystal*>(obj.get());
         if(xp) {
             if(player->getBounds().intersects(xp->getBounds())) {
-
-                xp->destroy(); // Zebranie xp
+                player->addXp(10); // Dodanie XP
+                xp->destroy();
             }
         }
 
@@ -128,6 +191,10 @@ void Engine::update(float deltaTime) {
         auto bonus = dynamic_cast<Bonus*>(obj.get());
         if(bonus) {
             if(player->getBounds().intersects(bonus->getBounds())) {
+                // Sprawdzamy czy podniesiony bonus to mikstura
+                if(bonus->getType() == BonusType::POTION) {
+                    player->heal(20);
+                }
 
                 bonus->destroy(); // Zebranie bonusu
             }
@@ -178,12 +245,23 @@ void Engine::update(float deltaTime) {
             }
         }
     }
+    // Przesypujemy nowe kryształy do głównej listy gry
+    for(auto& newObj : newObjects) {
+        gameObjects.push_back(newObj);
+    }
+
     // Usuwanie nieaktywnych obiektów
     gameObjects.erase(
         std::remove_if(gameObjects.begin(), gameObjects.end(),
             [](const std::shared_ptr<GameObject>& obj) { return !obj->isActive(); }),
         gameObjects.end()
     );
+
+    // Sprawdzenie czy gracz awansował
+    if(player->checkLevelUp()) {
+        currentState = GameState::LEVEL_UP; // Zatrzymanie gry
+        player->acknowledgeLevelUp();
+    }
 }
 
 void Engine::render() {
@@ -195,6 +273,19 @@ void Engine::render() {
             obj->draw(window);
         }
     }
+
+    // Rysowanie ekranu ulepszeń nakładanego na grę
+    if (currentState == GameState::LEVEL_UP) {
+        sf::RectangleShape overlay(sf::Vector2f(1280.f, 720.f));
+        overlay.setFillColor(sf::Color(0, 0, 0, 200)); // Przyciemnienie tła
+        window.draw(overlay);
+
+        window.draw(card1); window.draw(textCard1);
+        window.draw(card2); window.draw(textCard2);
+        window.draw(card3); window.draw(textCard3);
+        window.draw(textTitle);
+    }
+
     window.display();
 }
 
@@ -204,13 +295,19 @@ void Engine::run() {
         float deltaTime = clock.restart().asSeconds();
 
         handleEvents();
-        update(deltaTime);
 
-        //Automatyczny spawn wrogów co 2 sekundy
-        if(spawnClock.getElapsedTime().asSeconds()>=2.0f){
-            spawnEnemy();
-            spawnClock.restart();
+        // Pauza
+        // Aktualizujemy pozycje i wrogów tylko w trakcie gry
+        if (currentState == GameState::PLAYING) {
+            update(deltaTime);
+
+
+            if(spawnClock.getElapsedTime().asSeconds() >= 2.0f){
+                spawnEnemy();
+                spawnClock.restart();
+            }
         }
+
         render();
     }
 }

@@ -50,6 +50,12 @@ private:
     float specialCooldown;
     float specialTimer;
     bool wantsToShootSpecial;
+
+    // System levelowania
+    int xp;
+    int maxXp; // Próg 20 na poziom
+    int level;
+    bool pendingLevelUp;
 public:
     Player(float x, float y);
 
@@ -58,6 +64,7 @@ public:
     sf::FloatRect getBounds() const override;
 
     void takeDamage(int amount);
+    void heal(int amount);
     void setMousePosition(sf::Vector2f mousePos) { mousePosition = mousePos; }
 
     sf::FloatRect getAttackBounds() const;
@@ -70,6 +77,14 @@ public:
     sf::Vector2f getPosition() const { return position; }
     sf::Vector2f getLastDirection() const { return mouseDirection; }
     void setPosition(sf::Vector2f newPos) { position = newPos; sprite.setPosition(position); }
+
+    // Funkcje do Levelowania
+    void addXp(int amount);
+    bool checkLevelUp() const { return pendingLevelUp; }
+    void acknowledgeLevelUp() { pendingLevelUp = false; }
+
+    // Funkcja nakładająca wybrane ulepszenie
+    void applyUpgrade(int choice);
 };
 
 #endif

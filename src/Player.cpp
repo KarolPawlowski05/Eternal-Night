@@ -1,7 +1,7 @@
 #include "Player.h"
 #include <iostream>
 
-Player::Player(float x, float y) : GameObject(x, y), hp(100), maxHp(100), invincibilityTimer(0.f), speed(250.f), lastDirection(0.f, -1.f), attackSize(80.f, 60.f), attackCooldown(1.5f), attackTimer(0.f), attackDuration(0.1f), durationTimer(0.f), isAttacking(false), specialCooldown(5.0f), specialTimer(10.0f), wantsToShootSpecial(false), dashSpeed(650.f), dashCooldown(2.0f), dashTimer(2.0f), dashDuration(0.25f), dashDurationTimer(0.f), isDashing(false) {
+Player::Player(float x, float y) : GameObject(x, y), hp(100), maxHp(100), invincibilityTimer(0.f), speed(250.f), lastDirection(0.f, -1.f), attackSize(80.f, 60.f), attackCooldown(1.5f), attackTimer(0.f), attackDuration(0.1f), durationTimer(0.f), isAttacking(false), specialCooldown(5.0f), specialTimer(10.0f), wantsToShootSpecial(false), dashSpeed(650.f), dashCooldown(2.0f), dashTimer(2.0f), dashDuration(0.25f), dashDurationTimer(0.f), isDashing(false), xp(0), maxXp(20), level(1), pendingLevelUp(false) {
     // Konfiguracja gracza
     sprite.setSize(sf::Vector2f(40.f, 40.f));
     sprite.setFillColor(sf::Color::Blue);
@@ -187,4 +187,32 @@ sf::FloatRect Player::getBounds() const {
 
 sf::FloatRect Player::getAttackBounds() const {
     return attackIndicator.getGlobalBounds();
+}
+
+void Player::addXp(int amount) {
+    xp += amount;
+    if(xp >= maxXp) {
+        xp -= maxXp; // Przeniesienie nadmiaru XP na kolejny poziom
+        level++;
+        pendingLevelUp = true;
+    }
+}
+
+void Player::applyUpgrade(int choice) {
+    if (choice == 1) {
+        maxHp += 20;
+        hp = maxHp;
+    }
+    else if (choice == 2) {
+        speed *= 1.15f;
+    }
+    else if (choice == 3) {
+        attackCooldown *= 0.90f;
+    }
+}
+void Player::heal(int amount) {
+    hp += amount;
+    if(hp > maxHp) {
+        hp = maxHp;
+    }
 }
