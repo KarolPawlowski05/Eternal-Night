@@ -13,19 +13,19 @@ Enemy::Enemy(float x, float y, EnemyType enemyType, std::shared_ptr<Player> play
     if(type == EnemyType::TRUPOJADY){
         sprite.setFillColor(sf::Color::Magenta);
         baseColor = sf::Color::Magenta;
-        speed = 100.f;
+        speed = 50.f;
         maxHp = 50; // Duże HP
     }
     else if (type == EnemyType::OGROWATE){
         sprite.setFillColor(sf::Color::Green);
         baseColor = sf::Color::Green;
-        speed = 50.f;
+        speed = 25.f;
         maxHp = 150; // Ogromne HP
     }
     else if (type == EnemyType::UPIOR){
         sprite.setFillColor(sf::Color::White);
         baseColor = sf::Color::White;
-        speed = 180.f;
+        speed = 90.f;
         maxHp = 20; // Małe HP
     }
 
@@ -58,7 +58,6 @@ int Enemy::getXpReward() const {
     if (type == EnemyType::TRUPOJADY) return 10;
     if (type == EnemyType::OGROWATE) return 20;
     if (type == EnemyType::UPIOR) return 5;
-    return 10;
 }
 
 void Enemy::update(float deltaTime){

@@ -5,10 +5,8 @@ Bonus::Bonus(float x, float y, BonusType bonusType) : GameObject(x, y), type(bon
     sprite.setOrigin(10.f, 10.f);
     sprite.setPosition(position);
 
-    // Wygląd zależy od typu bonusu
-    if (type == BonusType::XP_CRYSTAL) {
-        sprite.setFillColor(sf::Color::Cyan); // Kryształ XP
-    } else if (type == BonusType::POTION) {
+    // Wygląd zależy od typu bonusu (Mikstura HP, Mikstura niewrażliwości itp. WIP)
+    if (type == BonusType::POTION) {
         sprite.setFillColor(sf::Color::Magenta); // Mikstura
     }
 }

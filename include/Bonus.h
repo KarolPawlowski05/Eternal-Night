@@ -4,7 +4,7 @@
 #include "GameObject.h"
 
 // Typy bonusów
-enum class BonusType { XP_CRYSTAL, POTION };
+enum class BonusType { POTION };
 
 class Bonus : public GameObject {
 private:

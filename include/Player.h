@@ -11,14 +11,21 @@ private:
 
     float speed;                        // Prędkość liniowa w px/s
     sf::Vector2f lastDirection;         // Ostatni kierunek ruchu
+    sf::Vector2f mouseDirection;        // Kierunek myszy
+    sf::Vector2f mousePosition;         // Pozycja kursora w świecie gry
 
     // HP
     int hp;
     int maxHp;
     float invincibilityTimer;
 
+    // Pasek HP
     sf::RectangleShape hpBarBackground;
     sf::RectangleShape hpBarForeground;
+
+    // Pasek cooldownu ataku
+    sf::RectangleShape attackCooldownBarBackground;
+    sf::RectangleShape attackCooldownBarForeground;
 
     // Unik
     float dashSpeed;
@@ -35,6 +42,7 @@ private:
     float attackDuration;               // Jak długo atak jest aktywny wizualnie
     float durationTimer;                // Czas trwania "błysku"
     bool isAttacking;                   // Czy w tej konkretnej klatce trwa zadawanie obrażeń
+    bool prevLMBPressed;                // Stan LPM w poprzedniej klatce (do detekcji kliknięcia)(
 
     void castAttack();                  // Wykonanie ataku
 
@@ -50,6 +58,7 @@ public:
     sf::FloatRect getBounds() const override;
 
     void takeDamage(int amount);
+    void setMousePosition(sf::Vector2f mousePos) { mousePosition = mousePos; }
 
     sf::FloatRect getAttackBounds() const;
     bool getIsAttacking() const { return isAttacking ; }
@@ -59,7 +68,7 @@ public:
     void resetSpecialShot() { wantsToShootSpecial = false; }
 
     sf::Vector2f getPosition() const { return position; }
-    sf::Vector2f getLastDirection() const { return lastDirection; }
+    sf::Vector2f getLastDirection() const { return mouseDirection; }
     void setPosition(sf::Vector2f newPos) { position = newPos; sprite.setPosition(position); }
 };
 

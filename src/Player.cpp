@@ -1,14 +1,14 @@
 #include "Player.h"
 #include <iostream>
 
-Player::Player(float x, float y) : GameObject(x, y), hp(100), maxHp(100), invincibilityTimer(0.f), speed(250.f), lastDirection(0.f, -1.f), attackSize(80.f, 60.f), attackCooldown(3.0f), attackTimer(0.f), attackDuration(0.1f), durationTimer(0.f), isAttacking(false), specialCooldown(10.0f), specialTimer(10.0f), wantsToShootSpecial(false), dashSpeed(650.f), dashCooldown(2.0f), dashTimer(2.0f), dashDuration(0.25f), dashDurationTimer(0.f), isDashing(false) {
+Player::Player(float x, float y) : GameObject(x, y), hp(100), maxHp(100), invincibilityTimer(0.f), speed(250.f), lastDirection(0.f, -1.f), attackSize(80.f, 60.f), attackCooldown(1.5f), attackTimer(0.f), attackDuration(0.1f), durationTimer(0.f), isAttacking(false), specialCooldown(5.0f), specialTimer(10.0f), wantsToShootSpecial(false), dashSpeed(650.f), dashCooldown(2.0f), dashTimer(2.0f), dashDuration(0.25f), dashDurationTimer(0.f), isDashing(false) {
     // Konfiguracja gracza
     sprite.setSize(sf::Vector2f(40.f, 40.f));
     sprite.setFillColor(sf::Color::Blue);
     sprite.setOrigin(20.f, 20.f);
     sprite.setPosition(position);
 
-    // Konfiguracja HP
+    // Konfiguracja paska HP
     hpBarBackground.setSize(sf::Vector2f(50.f, 6.f));
     hpBarBackground.setFillColor(sf::Color::Black);
     hpBarBackground.setOrigin(25.f, 3.f);
@@ -16,6 +16,15 @@ Player::Player(float x, float y) : GameObject(x, y), hp(100), maxHp(100), invinc
     hpBarForeground.setSize(sf::Vector2f(50.f, 6.f));
     hpBarForeground.setFillColor(sf::Color::Green);
     hpBarForeground.setOrigin(25.f, 3.f);
+
+    // Konfiguracja paska cooldownu ataku
+    attackCooldownBarBackground.setSize(sf::Vector2f(50.f, 4.f));
+    attackCooldownBarBackground.setFillColor(sf::Color(50, 50, 0));
+    attackCooldownBarBackground.setOrigin(25.f, 2.f);
+
+    attackCooldownBarForeground.setSize(sf::Vector2f(50.f, 4.f));
+    attackCooldownBarForeground.setFillColor(sf::Color::Yellow);
+    attackCooldownBarForeground.setOrigin(25.f, 2.f);
 
     // Konfiguracja wskaźnika ataku
     attackIndicator.setSize(attackSize);
@@ -53,15 +62,28 @@ void Player::update(float deltaTime) {
         sprite.setFillColor(sf::Color::Blue);
     }
 
-    // Timer ataku
-    attackTimer += deltaTime;
+    float dx = mousePosition.x - position.x;
+    float dy = mousePosition.y - position.y;
+    float dist = std::sqrt(dx * dx + dy * dy);
+    if(dist > 5.f) {
+        mouseDirection = sf::Vector2f(dx / dist, dy /dist);
+    }
+
+    // Timery
     specialTimer += deltaTime;
     dashTimer += deltaTime;
 
-    if(attackTimer >= attackCooldown) {
+    if(attackTimer < attackCooldown) {
+        attackTimer += deltaTime;
+    }
+
+    // Atak pod LPM
+    bool lmbNow = sf::Mouse::isButtonPressed(sf::Mouse::Left);
+    if(lmbNow && !prevLMBPressed && attackTimer >= attackCooldown) {
         castAttack();
         attackTimer = 0.f;
     }
+    prevLMBPressed = lmbNow;
 
     // Wygaszanie "błysku" ataku po upływie attackDuration
     if(isAttacking) {
@@ -133,20 +155,28 @@ void Player::update(float deltaTime) {
     sprite.setPosition(position);
 
     // Aktualizacja wskaźnika ataku
+    float angle = std::atan2(mouseDirection.y, mouseDirection.x) * 180.f / 3.13159265f;
     attackIndicator.setPosition(position);
-    float angle = std::atan2(lastDirection.y, lastDirection.x) * 180.f / 3.14159265f;
     attackIndicator.setRotation(angle);
 
-    // Aktualizacja HP
+    // Pasek HP
     float hpPercent = std::max(0.f, static_cast<float>(hp) / maxHp);
     hpBarForeground.setSize(sf::Vector2f(50.f * hpPercent, 6.f));
     hpBarBackground.setPosition(position.x, position.y + 30.f);
     hpBarForeground.setPosition(position.x, position.y + 30.f);
+
+    // Pasek Cooldownu
+    float cdPercent = std::min(1.f, attackTimer / attackCooldown);
+    attackCooldownBarForeground.setSize(sf::Vector2f(50.f * cdPercent, 4.f));
+    attackCooldownBarBackground.setPosition(position.x, position.y + 38.f);
+    attackCooldownBarForeground.setPosition(position.x, position.y + 38.f);
 }
 
 void Player::draw(sf::RenderWindow& window) {
     window.draw(hpBarBackground);
     window.draw(hpBarForeground);
+    window.draw(attackCooldownBarBackground);
+    window.draw(attackCooldownBarForeground);
     window.draw(attackIndicator);
     window.draw(sprite);
 }

@@ -15,10 +15,12 @@ Engine::Engine() {
 
     // Gracz na środku ekranu
     player = std::make_shared<Player>(640.f, 360.f);
+
     // Gracz do kontenera obiektów gry
     gameObjects.push_back(player);
+
     // --- LOSOWE GENEROWANIE PRZESZKÓD ---
-    for (int i = 0; i < 10; ++i) {
+    for (int i = 0; i < 5; ++i) {
         float randX = rand() % 1200 + 40; // Losowanie żeby nie wystawały poza ekran
         float randY = rand() % 640 + 40;
         int randType = rand() % 3;
@@ -31,17 +33,12 @@ Engine::Engine() {
         gameObjects.push_back(std::make_shared<Obstacle>(randX, randY, type));
     }
 
-    // --- LOSOWE GENEROWANIE BONUSÓW ---
-    for (int i = 0; i < 5; ++i) {
+    // Losowe mikstury
+    for (int i = 0; i < 3; ++i) {
         float randX = rand() % 1200 + 40;
         float randY = rand() % 640 + 40;
         int randType = rand() % 2;
-
-        BonusType type;
-        if (randType == 0) type = BonusType::XP_CRYSTAL;
-        else type = BonusType::POTION;
-
-        gameObjects.push_back(std::make_shared<Bonus>(randX, randY, type));
+        gameObjects.push_back(std::make_shared<Bonus>(randX, randY, BonusType::POTION));
     }
 }
 
@@ -58,6 +55,10 @@ void Engine::handleEvents() {
 }
 
 void Engine::update(float deltaTime) {
+    // Przekazanie pozycji kursora
+    sf::Vector2f mousePos = window.mapPixelToCoords(sf::Mouse::getPosition(window));
+    player->setMousePosition(mousePos);
+
     // Tworzenie pocisku
     if(player->getWantsToShootSpecial()) {
         sf::Vector2f spawnPos = player->getPosition();
@@ -113,12 +114,22 @@ void Engine::update(float deltaTime) {
                 }
             }
         }
-        //Kolizje z Bonusem
+
+        // Kolizje z XP
+        auto xp = dynamic_cast<XpCrystal*>(obj.get());
+        if(xp) {
+            if(player->getBounds().intersects(xp->getBounds())) {
+
+                xp->destroy(); // Zebranie xp
+            }
+        }
+
+        // Kolizje z Bonusem
         auto bonus = dynamic_cast<Bonus*>(obj.get());
         if(bonus) {
             if(player->getBounds().intersects(bonus->getBounds())) {
-                bonus->destroy(); // Zebranie bonusu
 
+                bonus->destroy(); // Zebranie bonusu
             }
         }
 
@@ -212,18 +223,18 @@ void Engine::spawnEnemy(){
     //Losowanie krawedzi ekranu
     if(krawedz == 0){ //Góra
         spawnX = rand() % 1280;
-        spawnY = 40.f;
+        spawnY = -30.f;
     }
     else if(krawedz == 1){ //Dół
         spawnX = rand() % 1280;
-        spawnY = 680.f;
+        spawnY = 750.f;
     }
     else if(krawedz == 2){ //Lewo
-        spawnX = 40.f;
+        spawnX = -30.f;
         spawnY = rand() % 720;
     }
     else{ //Prawo
-        spawnX = 1240.f;
+        spawnX = 1310.f;
         spawnY = rand() % 720;
     }
 
