@@ -56,6 +56,18 @@ private:
     int maxXp; // Próg 20 na poziom
     int level;
     bool pendingLevelUp;
+
+    // Rozbudowane statystyki
+    int damageBonus;
+    int armor;
+    float critChance;
+    int enemiesKilled;
+    int potionsCollected;
+    float vampirismChance;
+    float pickupRadiusBonus;
+    float dodgeChance;
+    int hpRegenRate;
+    float hpRegenTimer;
 public:
     Player(float x, float y);
 
@@ -85,6 +97,34 @@ public:
 
     // Funkcja nakładająca wybrane ulepszenie
     void applyUpgrade(int choice);
+
+    // Funkcje systemu statystyk
+    int getDamage(int baseDamage) const;
+    void incrementKills() { enemiesKilled++; }
+    void incrementPotions() { potionsCollected++; }
+    void triggerVampirism();
+
+    int getLevel() const { return level; }
+    int getEnemiesKilled() const { return enemiesKilled; }
+    int getPotionsCollected() const { return potionsCollected; }
+    int getArmor() const { return armor; }
+    int getDamageBonus() const { return damageBonus; }
+    float getCritChance() const { return critChance; }
+    float getVampirismChance() const { return vampirismChance; }
+    float getSpeed() const { return speed; }
+
+    sf::FloatRect getPickupBounds() const {
+        sf::FloatRect bounds = sprite.getGlobalBounds();
+        bounds.left -= pickupRadiusBonus;
+        bounds.top -= pickupRadiusBonus;
+        bounds.width += pickupRadiusBonus * 2.f;
+        bounds.height += pickupRadiusBonus * 2.f;
+        return bounds;
+    }
+
+    float getDodgeChance() const { return dodgeChance; }
+    int getHpRegenRate() const { return hpRegenRate; }
+
 };
 
 #endif

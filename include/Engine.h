@@ -33,6 +33,10 @@ private:
     sf::Text textCard1;
     sf::Text textCard2;
     sf::Text textCard3;
+    sf::Text hudStatsText;
+
+    int offeredUpgrades[3];
+    void generateUpgrades();
 
 public:
     Engine();

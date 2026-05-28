@@ -69,23 +69,19 @@ Engine::Engine() {
         textTitle.setFillColor(sf::Color::White);
         textTitle.setPosition(350.f, 100.f);
 
-        // Karta 1
-        card1.setSize(sf::Vector2f(250.f, 350.f));
-        card1.setPosition(200.f, 200.f);
-        card1.setFillColor(sf::Color(50, 100, 50));
-        textCard1.setFont(font); textCard1.setString("+20 Max HP\n& Leczenie"); textCard1.setCharacterSize(24); textCard1.setPosition(220.f, 350.f);
+        card1.setSize(sf::Vector2f(250.f, 350.f)); card1.setPosition(200.f, 200.f);
+        textCard1.setFont(font); textCard1.setCharacterSize(24); textCard1.setPosition(220.f, 350.f);
 
-        // Karta 2
-        card2.setSize(sf::Vector2f(250.f, 350.f));
-        card2.setPosition(500.f, 200.f);
-        card2.setFillColor(sf::Color(50, 50, 100));
-        textCard2.setFont(font); textCard2.setString("+15% Szybkosci\nRuchu"); textCard2.setCharacterSize(24); textCard2.setPosition(520.f, 350.f);
+        card2.setSize(sf::Vector2f(250.f, 350.f)); card2.setPosition(500.f, 200.f);
+        textCard2.setFont(font); textCard2.setCharacterSize(24); textCard2.setPosition(520.f, 350.f);
 
-        // Karta 3
-        card3.setSize(sf::Vector2f(250.f, 350.f));
-        card3.setPosition(800.f, 200.f);
-        card3.setFillColor(sf::Color(100, 50, 50));
-        textCard3.setFont(font); textCard3.setString("-10% Czasu\nOdnowienia\nAtaku"); textCard3.setCharacterSize(24); textCard3.setPosition(820.f, 350.f);
+        card3.setSize(sf::Vector2f(250.f, 350.f)); card3.setPosition(800.f, 200.f);
+        textCard3.setFont(font); textCard3.setCharacterSize(24); textCard3.setPosition(820.f, 350.f);
+
+        hudStatsText.setFont(font);
+        hudStatsText.setCharacterSize(16);
+        hudStatsText.setFillColor(sf::Color(200, 200, 200));
+        hudStatsText.setPosition(20.f, 20.f);
     }
 }
 
@@ -102,17 +98,10 @@ void Engine::handleEvents() {
         if (currentState == GameState::LEVEL_UP && event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left) {
             sf::Vector2f mousePos = window.mapPixelToCoords(sf::Mouse::getPosition(window));
 
-            if (card1.getGlobalBounds().contains(mousePos)) {
-                player->applyUpgrade(1);
-                currentState = GameState::PLAYING;
-            } else if (card2.getGlobalBounds().contains(mousePos)) {
-                player->applyUpgrade(2);
-                currentState = GameState::PLAYING;
-            } else if (card3.getGlobalBounds().contains(mousePos)) {
-                player->applyUpgrade(3);
-                currentState = GameState::PLAYING;
-            }
-    }
+            if (card1.getGlobalBounds().contains(mousePos)) { player->applyUpgrade(offeredUpgrades[0]); currentState = GameState::PLAYING; }
+            else if (card2.getGlobalBounds().contains(mousePos)) { player->applyUpgrade(offeredUpgrades[1]); currentState = GameState::PLAYING; }
+            else if (card3.getGlobalBounds().contains(mousePos)) { player->applyUpgrade(offeredUpgrades[2]); currentState = GameState::PLAYING; }
+        }
 }
 }
 
@@ -152,9 +141,11 @@ void Engine::update(float deltaTime) {
 
             // Kolizja: Atak obszarowy gracza - Wróg
             if(player->getIsAttacking() && player->getAttackBounds().intersects(enemy->getBounds())) {
-                enemy->takeDamage(10); // WIP
+                enemy->takeDamage(player->getDamage(10));
 
                 if(!enemy->isActive()) {
+                    player->incrementKills();
+                    player->triggerVampirism();
                     newObjects.push_back(std::make_shared<XpCrystal>(enemy->getPosition().x, enemy->getPosition().y, enemy->getXpReward()));
                 }
             }
@@ -166,9 +157,11 @@ void Engine::update(float deltaTime) {
                 auto projectile = dynamic_cast<Projectile*>(otherObj.get());
                 if(projectile) {
                     if(projectile->getBounds().intersects(enemy->getBounds())) {
-                        enemy->takeDamage(20); // WIP
+                        enemy->takeDamage(player->getDamage(20));
 
                         if(!enemy->isActive()) {
+                            player->incrementKills();
+                            player->triggerVampirism();
                             newObjects.push_back(std::make_shared<XpCrystal>(enemy->getPosition().x, enemy->getPosition().y, enemy->getXpReward()));
                         }
 
@@ -181,7 +174,7 @@ void Engine::update(float deltaTime) {
         // Kolizje z XP
         auto xp = dynamic_cast<XpCrystal*>(obj.get());
         if(xp) {
-            if(player->getBounds().intersects(xp->getBounds())) {
+            if(player->getPickupBounds().intersects(xp->getBounds())) {
                 player->addXp(10); // Dodanie XP
                 xp->destroy();
             }
@@ -190,10 +183,11 @@ void Engine::update(float deltaTime) {
         // Kolizje z Bonusem
         auto bonus = dynamic_cast<Bonus*>(obj.get());
         if(bonus) {
-            if(player->getBounds().intersects(bonus->getBounds())) {
+            if(player->getPickupBounds().intersects(bonus->getBounds())) {
                 // Sprawdzamy czy podniesiony bonus to mikstura
                 if(bonus->getType() == BonusType::POTION) {
                     player->heal(20);
+                    player->incrementPotions();
                 }
 
                 bonus->destroy(); // Zebranie bonusu
@@ -259,7 +253,8 @@ void Engine::update(float deltaTime) {
 
     // Sprawdzenie czy gracz awansował
     if(player->checkLevelUp()) {
-        currentState = GameState::LEVEL_UP; // Zatrzymanie gry
+        generateUpgrades();
+        currentState = GameState::LEVEL_UP;
         player->acknowledgeLevelUp();
     }
 }
@@ -278,6 +273,31 @@ void Engine::render() {
     if (currentState == GameState::LEVEL_UP) {
         sf::RectangleShape overlay(sf::Vector2f(1280.f, 720.f));
         overlay.setFillColor(sf::Color(0, 0, 0, 200)); // Przyciemnienie tła
+        window.draw(overlay);
+
+        window.draw(card1); window.draw(textCard1);
+        window.draw(card2); window.draw(textCard2);
+        window.draw(card3); window.draw(textCard3);
+        window.draw(textTitle);
+    }
+    //Rysowanie HUD
+    std::string statsStr = "POZIOM: " + std::to_string(player->getLevel()) +
+                           "\nZABICI: " + std::to_string(player->getEnemiesKilled()) +
+                           "\nMIKSTURY: " + std::to_string(player->getPotionsCollected()) +
+                           "\nPANCERZ: " + std::to_string(player->getArmor()) +
+                           "\nBONUS DMG: +" + std::to_string(player->getDamageBonus()) +
+                           "\nKRYTYK: " + std::to_string(static_cast<int>(player->getCritChance() * 100)) + "%" +
+                           "\nWAMPIRYZM: " + std::to_string(static_cast<int>(player->getVampirismChance() * 100)) + "%" +
+                           "\nUNIK: " + std::to_string(static_cast<int>(player->getDodgeChance() * 100)) + "%" +
+                           "\nREGEN: " + std::to_string(player->getHpRegenRate()) + " HP/5s" +
+                           "\nSZYBKOSC: " + std::to_string(static_cast<int>(player->getSpeed()));
+    hudStatsText.setString(statsStr);
+    window.draw(hudStatsText);
+
+    // Rysowanie menu awansu
+    if (currentState == GameState::LEVEL_UP) {
+        sf::RectangleShape overlay(sf::Vector2f(1280.f, 720.f));
+        overlay.setFillColor(sf::Color(0, 0, 0, 200));
         window.draw(overlay);
 
         window.draw(card1); window.draw(textCard1);
@@ -348,3 +368,36 @@ void Engine::spawnEnemy(){
     gameObjects.push_back(newEnemy);
 }
 
+void Engine::generateUpgrades() {
+    std::vector<int> selected;
+    while(selected.size() < 3) {
+        int r = rand() % 11;
+        if(std::find(selected.begin(), selected.end(), r) == selected.end()) {
+            selected.push_back(r);
+        }
+    }
+
+    for(int i = 0; i < 3; ++i) {
+        offeredUpgrades[i] = selected[i];
+        std::wstring text;
+        sf::Color color;
+
+        switch (selected[i]) {
+        case 0: text = L"+20 Max HP\n& Leczenie"; color = sf::Color(50, 100, 50); break;
+        case 1: text = L"+15% Szybkości\nRuchu"; color = sf::Color(50, 50, 100); break;
+        case 2: text = L"-10% Czasu\nOdnowienia\nAtaku"; color = sf::Color(100, 50, 50); break;
+        case 3: text = L"+5 Obrażeń\nAtaku"; color = sf::Color(120, 40, 40); break;
+        case 4: text = L"+2 Punkty\nPancerza"; color = sf::Color(100, 100, 30); break;
+        case 5: text = L"+5% Szansy\nna Krytyk"; color = sf::Color(100, 50, 100); break;
+        case 6: text = L"+5% Szansy na\nLeczenie (2HP)\npo zabójstwie"; color = sf::Color(140, 20, 50); break;
+        case 7: text = L"+ Zasięg\nPodnoszenia\n(Magnes)"; color = sf::Color(100, 100, 150); break;
+        case 8: text = L"+10% Szansy\nna Uniknięcie\nObrażeń"; color = sf::Color(40, 120, 120); break;
+        case 9: text = L"-20% Czasu\nOdnowienia\nKuszy"; color = sf::Color(150, 100, 50); break;
+        case 10: text = L"Regeneracja\n+1 HP co\n5 sekund"; color = sf::Color(50, 150, 50); break;
+        }
+
+        if(i == 0) { textCard1.setString(text); card1.setFillColor(color); }
+        else if(i == 1) { textCard2.setString(text); card2.setFillColor(color); }
+        else if(i == 2) { textCard3.setString(text); card3.setFillColor(color); }
+    }
+}
