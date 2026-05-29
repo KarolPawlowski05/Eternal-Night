@@ -62,7 +62,7 @@ Engine::Engine() {
     currentState = GameState::PLAYING;
 
     // Ładowanie czcionki i tworzenie kart ulepszeń
-    if(font.loadFromFile("arial.ttf")) {
+    if(font.loadFromFile("assets/fonts/PixelGame.otf")) {
         textTitle.setFont(font);
         textTitle.setString("AWANS! WYBIERZ ULEPSZENIE");
         textTitle.setCharacterSize(40);
