@@ -5,6 +5,7 @@
 #include <vector>
 #include <memory>
 #include "GameObject.h"
+
 enum class GameState { PLAYING, LEVEL_UP };
 class Player;
 
@@ -12,7 +13,6 @@ class Engine {
 private:
     sf::RenderWindow window;
     sf::Clock clock; // Do obliczania deltaTime
-    sf::Clock spawnClock; // Odlicza czas do kolejnego spawnu
 
     std::vector<std::shared_ptr<GameObject>> gameObjects; // Głowny kontener na wszystkie obiekty gry
     std::shared_ptr<Player> player; // Bezpośredni dostęp do gracza
@@ -37,6 +37,11 @@ private:
 
     int offeredUpgrades[3];
     void generateUpgrades();
+    // System Nieskończonych Fal
+    int currentWave;
+    float waveTimer;
+    float timeBetweenWaves; // Czas między kolejnymi falami
+    void spawnWave();       // Zastępuje stare spawnEnemy()
 
 public:
     Engine();

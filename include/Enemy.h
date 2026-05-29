@@ -5,7 +5,7 @@
 
 class Player;
 
-enum class EnemyType {TRUPOJADY, UPIOR, OGROWATE}; //Typy wrogow
+enum class EnemyType {TRUPOJADY, UPIOR, OGROWATE, KAMIKAZE, CIEN, WAMPIR, ZJAWA}; //Typy wrogow
 
 class Enemy : public GameObject {
 private:
@@ -17,21 +17,32 @@ private:
     int hp;
     int maxHp;
     float damageCooldown; // Żeby atak obszarowy/kusza nie zadawały obrażeń co klatkę
+    float fireAuraCooldown; // Zegar dla aury ognia
+    float swordCooldown;    // Zegar dla miecza
     sf::Color baseColor;  // Do przywracania koloru po "błysku" otrzymania obrażeń
 
     sf::RectangleShape hpBarBackground; // Czarne tło paska HP
     sf::RectangleShape hpBarForeground; // Czerwony pasek HP
+    float baseSpeed;
+    float abilityTimer;
+    bool isKamikaze;
+    bool isGhost;
+    bool isVampire;
 public:
-    Enemy(float x, float y, EnemyType enemytype,std::shared_ptr<Player> playerTarget);
+    Enemy(float x, float y, EnemyType type, std::shared_ptr<Player> player, float hpMult = 1.0f, float speedMult = 1.0f);
 
     //nadpisanie metod wirtualnych z klasy bazowej GameObject
     void update(float deltaTime) override;
     void draw(sf::RenderWindow& window) override;
     sf::FloatRect getBounds() const override;
 
-    void takeDamage(int amount);
+    void takeDamage(int amount, int damageType = 0);
     int getXpReward() const; // Zwraca ilość XP do wypadnięcia
     void setPosition(sf::Vector2f newPos) { position = newPos; sprite.setPosition(position); }
+    void heal(int amount) { hp += amount; if(hp > maxHp) hp = maxHp; }
+    bool getIsKamikaze() const { return isKamikaze; }
+    bool getIsGhost() const { return isGhost; }
+    bool getIsVampire() const { return isVampire; }
 };
 
 #endif

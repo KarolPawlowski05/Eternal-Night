@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <cstdlib>
 #include <memory>
+#include <cmath>
 
 Engine::Engine() {
     // Rozmiar okna
@@ -18,6 +19,13 @@ Engine::Engine() {
 
     // Gracz do kontenera obiektów gry
     gameObjects.push_back(player);
+
+    currentWave = 1;
+    timeBetweenWaves = 20.0f; // Nowa fala atakuje co 20 sekund
+    waveTimer = 20.0f;        // Ustawiamy na 20, żeby PIERWSZA fala zrespiła się od razu po starcie gry!
+
+
+
 
     // --- LOSOWE GENEROWANIE PRZESZKÓD ---
     for (int i = 0; i < 5; ++i) {
@@ -136,17 +144,54 @@ void Engine::update(float deltaTime) {
         if(enemy) {
             // Kolizja: Gracz - Wróg
             if(player->getBounds().intersects(enemy->getBounds())) {
-                player->takeDamage(10); // WIP
+                if (enemy->getIsKamikaze()) {
+                    player->takeDamage(30);
+                    enemy->takeDamage(9999);
+                } else {
+                    player->takeDamage(10);
+                    if (enemy->getIsVampire()) {
+                        enemy->heal(15);
+                    }
+                }
             }
 
             // Kolizja: Atak obszarowy gracza - Wróg
             if(player->getIsAttacking() && player->getAttackBounds().intersects(enemy->getBounds())) {
-                enemy->takeDamage(player->getDamage(10));
+                enemy->takeDamage(player->getDamage(25));
 
                 if(!enemy->isActive()) {
                     player->incrementKills();
                     player->triggerVampirism();
                     newObjects.push_back(std::make_shared<XpCrystal>(enemy->getPosition().x, enemy->getPosition().y, enemy->getXpReward()));
+                }
+            }
+            // Kolizja: Aura Ognia (Pasywna)
+            if (player->getHasFireAura()) {
+                float dx = enemy->getPosition().x - player->getPosition().x;
+                float dy = enemy->getPosition().y - player->getPosition().y;
+                float dist = std::sqrt(dx * dx + dy * dy);
+
+                if (dist <= player->getFireAuraRadius()) {
+                    enemy->takeDamage(player->getDamage(3), 1);
+
+                    if(!enemy->isActive()) {
+                        player->incrementKills();
+                        player->triggerVampirism();
+                        newObjects.push_back(std::make_shared<XpCrystal>(enemy->getPosition().x, enemy->getPosition().y, enemy->getXpReward()));
+                    }
+                }
+            }
+
+            // Kolizja: Orbitujące Ostrze (Pasywna)
+            if (player->getHasOrbitingSword()) {
+                if (player->getOrbitingSwordBounds().intersects(enemy->getBounds())) {
+                    enemy->takeDamage(player->getDamage(15), 2);
+
+                    if(!enemy->isActive()) {
+                        player->incrementKills();
+                        player->triggerVampirism();
+                        newObjects.push_back(std::make_shared<XpCrystal>(enemy->getPosition().x, enemy->getPosition().y, enemy->getXpReward()));
+                    }
                 }
             }
 
@@ -157,7 +202,7 @@ void Engine::update(float deltaTime) {
                 auto projectile = dynamic_cast<Projectile*>(otherObj.get());
                 if(projectile) {
                     if(projectile->getBounds().intersects(enemy->getBounds())) {
-                        enemy->takeDamage(player->getDamage(20));
+                        enemy->takeDamage(player->getDamage(50));
 
                         if(!enemy->isActive()) {
                             player->incrementKills();
@@ -169,7 +214,32 @@ void Engine::update(float deltaTime) {
                     }
                 }
             }
+            //KOLIZJA WRÓG - WRÓG:
+        if (!enemy->getIsGhost()) {
+            for(auto& otherObj : gameObjects) {
+                if(!otherObj->isActive() || obj == otherObj) continue;
+
+                auto otherEnemy = dynamic_cast<Enemy*>(otherObj.get());
+                if(otherEnemy) {
+                    sf::FloatRect intersection;
+
+                    if(enemy->getBounds().intersects(otherEnemy->getBounds(), intersection)) {
+                        sf::Vector2f pos = enemy->getPosition();
+
+                        if(intersection.width < intersection.height) {
+                            if(enemy->getBounds().left < otherEnemy->getBounds().left) pos.x -= intersection.width / 2.f;
+                            else pos.x += intersection.width / 2.f;
+                        } else {
+                            if(enemy->getBounds().top < otherEnemy->getBounds().top) pos.y -= intersection.height / 2.f;
+                            else pos.y += intersection.height / 2.f;
+                        }
+
+                        enemy->setPosition(pos);
+                    }
+                }
+            }
         }
+    }
 
         // Kolizje z XP
         auto xp = dynamic_cast<XpCrystal*>(obj.get());
@@ -222,6 +292,7 @@ void Engine::update(float deltaTime) {
                 if(!otherObj->isActive()) continue;
                 auto otherEnemy = dynamic_cast<Enemy*>(otherObj.get());
                 if(otherEnemy) {
+                    if (!otherEnemy->getIsGhost()) {
                     sf::FloatRect enemyIntersection;
                     if(otherEnemy->getBounds().intersects(obsBounds, enemyIntersection)) {
                         sf::Vector2f newEnemyPos = otherEnemy->getPosition();
@@ -239,6 +310,8 @@ void Engine::update(float deltaTime) {
             }
         }
     }
+}
+
     // Przesypujemy nowe kryształy do głównej listy gry
     for(auto& newObj : newObjects) {
         gameObjects.push_back(newObj);
@@ -282,6 +355,7 @@ void Engine::render() {
     }
     //Rysowanie HUD
     std::string statsStr = "POZIOM: " + std::to_string(player->getLevel()) +
+                           "\nFALA: " + std::to_string(currentWave) + " (Kolejna za: " + std::to_string((int)(timeBetweenWaves - waveTimer)) + "s)" +
                            "\nZABICI: " + std::to_string(player->getEnemiesKilled()) +
                            "\nMIKSTURY: " + std::to_string(player->getPotionsCollected()) +
                            "\nPANCERZ: " + std::to_string(player->getArmor()) +
@@ -315,16 +389,17 @@ void Engine::run() {
         float deltaTime = clock.restart().asSeconds();
 
         handleEvents();
-
-        // Pauza
-        // Aktualizujemy pozycje i wrogów tylko w trakcie gry
+        //Pauza
         if (currentState == GameState::PLAYING) {
             update(deltaTime);
 
+            waveTimer += deltaTime;
 
-            if(spawnClock.getElapsedTime().asSeconds() >= 2.0f){
-                spawnEnemy();
-                spawnClock.restart();
+            // Kiedy minie czas, zrzucamy na gracza całą falę na raz
+            if (waveTimer >= timeBetweenWaves) {
+                spawnWave();
+                currentWave++;   // Zwiększamy poziom trudności
+                waveTimer = 0.f; // Resetujemy zegar do kolejnej fali
             }
         }
 
@@ -332,46 +407,53 @@ void Engine::run() {
     }
 }
 
-void Engine::spawnEnemy(){
-    int krawedz = rand() % 4;
-    float spawnX = 0;
-    float spawnY = 0;
+void Engine::spawnWave() {
+    int enemiesToSpawn = 5 + (currentWave * 2);
 
-    //Losowanie krawedzi ekranu
-    if(krawedz == 0){ //Góra
-        spawnX = rand() % 1280;
-        spawnY = -30.f;
-    }
-    else if(krawedz == 1){ //Dół
-        spawnX = rand() % 1280;
-        spawnY = 750.f;
-    }
-    else if(krawedz == 2){ //Lewo
-        spawnX = -30.f;
-        spawnY = rand() % 720;
-    }
-    else{ //Prawo
-        spawnX = 1310.f;
-        spawnY = rand() % 720;
-    }
+    // Mnożniki
+    float hpM = 1.0f + (currentWave * 0.08f);
+    float speedM = 1.0f + (currentWave * 0.03f);
 
-    int losowyTyp = rand() % 3;
-    EnemyType typ;
-    if (losowyTyp == 0) typ = EnemyType::TRUPOJADY;
-    else if (losowyTyp == 1) typ = EnemyType::UPIOR;
-    else typ = EnemyType::OGROWATE;
+    //Pozycja startowa to gracz a promień to odległość poza ekranem
+    sf::Vector2f center = player->getPosition();
+    float radius = 800.f;
 
-    // Tworzenie nowego wroga za pomoca shared_ptr
-    auto newEnemy = std::make_shared<Enemy>(spawnX, spawnY, typ, player);
+    //Spawnowanie całej grupy
+    for(int i = 0; i < enemiesToSpawn; ++i) {
+        // Losujemy kąt dookoła gracza (od 0 do 360 stopni i zamieniamy na radiany)
+        float angle = (rand() % 360) * 3.14159f / 180.f;
 
-    // Dodanie wroga do wspolnego kontenera obiektów gry
-    gameObjects.push_back(newEnemy);
+        //Obliczanie pozycji na okręgu
+        float spawnX = center.x + cos(angle) * radius;
+        float spawnY = center.y + sin(angle) * radius;
+
+        // 4. Dobór wrogów: 40% to zawsze standardowy tłum, reszta to odblokowane potwory
+        EnemyType typ;
+        int typeChance = rand() % 100;
+
+        if (typeChance < 40) {
+            typ = EnemyType::TRUPOJADY;
+        } else {
+            // Z każdą kolejną falą odblokowuje się nowy, groźniejszy typ wroga
+            int unlockedTypes = std::min(currentWave, 6);
+            int specialRoll = rand() % unlockedTypes;
+
+            if (specialRoll == 0) typ = EnemyType::UPIOR;
+            else if (specialRoll == 1) typ = EnemyType::OGROWATE;
+            else if (specialRoll == 2) typ = EnemyType::KAMIKAZE;
+            else if (specialRoll == 3) typ = EnemyType::CIEN;
+            else if (specialRoll == 4) typ = EnemyType::WAMPIR;
+            else if (specialRoll == 5) typ = EnemyType::ZJAWA;
+        }
+
+        gameObjects.push_back(std::make_shared<Enemy>(spawnX, spawnY, typ, player, hpM, speedM));
+    }
 }
 
 void Engine::generateUpgrades() {
     std::vector<int> selected;
     while(selected.size() < 3) {
-        int r = rand() % 11;
+        int r = rand() % 13;
         if(std::find(selected.begin(), selected.end(), r) == selected.end()) {
             selected.push_back(r);
         }
@@ -394,6 +476,8 @@ void Engine::generateUpgrades() {
         case 8: text = L"+10% Szansy\nna Uniknięcie\nObrażeń"; color = sf::Color(40, 120, 120); break;
         case 9: text = L"-20% Czasu\nOdnowienia\nKuszy"; color = sf::Color(150, 100, 50); break;
         case 10: text = L"Regeneracja\n+1 HP co\n5 sekund"; color = sf::Color(50, 150, 50); break;
+        case 11: text = L"Aura Ognia\n(Odblokuj / Powiększ)"; color = sf::Color(200, 80, 0); break;
+        case 12: text = L"Orbitujące Ostrze\n(Odblokuj / Przyspiesz)"; color = sf::Color(0, 150, 200); break;
         }
 
         if(i == 0) { textCard1.setString(text); card1.setFillColor(color); }

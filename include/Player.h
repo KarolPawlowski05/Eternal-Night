@@ -68,11 +68,20 @@ private:
     float specialTimer;
     bool wantsToShootSpecial;
 
+    //Pasywne Bronie
+    bool hasFireAura;
+    sf::CircleShape fireAuraShape;
+    float fireAuraRadius;
+
+    bool hasOrbitingSword;
+    sf::RectangleShape orbitSwordShape;
+    float orbitAngle;
+    float orbitSpeed;
+
     // System levelowania
     int xp;
     int maxXp; // Próg 20 na poziom
     int level;
-    bool pendingLevelUp;
 
     // Rozbudowane statystyki
     int damageBonus;
@@ -113,8 +122,12 @@ public:
 
     // Funkcje do Levelowania
     void addXp(int amount);
-    bool checkLevelUp() const { return pendingLevelUp; }
-    void acknowledgeLevelUp() { pendingLevelUp = false; }
+    bool checkLevelUp() const { return xp >= maxXp; }
+    void acknowledgeLevelUp() {
+        xp -= maxXp;
+        level++;
+        maxXp = static_cast<int>(maxXp * 1.15f);
+    }
 
     // Funkcja nakładająca wybrane ulepszenie
     void applyUpgrade(int choice);
@@ -143,6 +156,11 @@ public:
 
     float getDodgeChance() const { return dodgeChance; }
     int getHpRegenRate() const { return hpRegenRate; }
+    bool getHasFireAura() const { return hasFireAura; }
+    float getFireAuraRadius() const { return fireAuraRadius; }
+
+    bool getHasOrbitingSword() const { return hasOrbitingSword; }
+    sf::FloatRect getOrbitingSwordBounds() const { return orbitSwordShape.getGlobalBounds(); }
 
 };
 
