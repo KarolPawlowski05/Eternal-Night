@@ -1,11 +1,25 @@
 #include "Player.h"
 
-Player::Player(float x, float y) : GameObject(x, y), hp(100), maxHp(100), invincibilityTimer(0.f), speed(250.f), lastDirection(0.f, -1.f), attackSize(80.f, 60.f), attackCooldown(1.5f), attackTimer(0.f), attackDuration(0.1f), durationTimer(0.f), isAttacking(false), specialCooldown(5.0f), specialTimer(10.0f), wantsToShootSpecial(false), dashSpeed(650.f), dashCooldown(2.0f), dashTimer(2.0f), dashDuration(0.25f), dashDurationTimer(0.f), isDashing(false), xp(0), maxXp(20), level(1), pendingLevelUp(false), damageBonus(0), armor(0), critChance(0.05f), enemiesKilled(0), potionsCollected(0), vampirismChance(0.0f), pickupRadiusBonus(0.f), dodgeChance(0.0f), hpRegenRate(0), hpRegenTimer(0.f) {
-    // Konfiguracja gracza
-    sprite.setSize(sf::Vector2f(40.f, 40.f));
-    sprite.setFillColor(sf::Color::Blue);
-    sprite.setOrigin(20.f, 20.f);
+// Konstruktor
+Player::Player(float x, float y)
+    : GameObject(x, y),
+    // Animacja
+    currentFrame(0), frameTimer(0.f), frameSpeed(0.1f), animState(AnimState::IDLE), animDir(AnimDir::DOWN), texturesLoaded(false),
+    // Inne
+    hp(100), maxHp(100), invincibilityTimer(0.f),
+    speed(250.f),
+    lastDirection(0.f, -1.f),
+    attackSize(80.f, 60.f), attackCooldown(1.5f), attackTimer(0.f), attackDuration(0.1f), durationTimer(0.f), isAttacking(false), specialCooldown(5.0f), specialTimer(10.0f), wantsToShootSpecial(false),
+    dashSpeed(650.f), dashCooldown(2.0f), dashTimer(2.0f), dashDuration(0.25f), dashDurationTimer(0.f), isDashing(false),
+    xp(0), maxXp(20), level(1),
+    pendingLevelUp(false), damageBonus(0), armor(0), critChance(0.05f), enemiesKilled(0), potionsCollected(0), vampirismChance(0.0f), pickupRadiusBonus(0.f), dodgeChance(0.0f), hpRegenRate(0), hpRegenTimer(0.f)
+{
+    loadTextures();
+    // Origin na środek kadru
+    sprite.setScale(2.f, 2.f);
+    sprite.setOrigin(FRAME_W / 2.f, FRAME_H / 2.f);
     sprite.setPosition(position);
+    sprite.setTextureRect(sf::IntRect(0, 0, FRAME_W, FRAME_H));
 
     // Konfiguracja paska HP
     hpBarBackground.setSize(sf::Vector2f(50.f, 6.f));
@@ -29,6 +43,70 @@ Player::Player(float x, float y) : GameObject(x, y), hp(100), maxHp(100), invinc
     attackIndicator.setSize(attackSize);
     attackIndicator.setOrigin(0.f, attackSize.y / 2.f);
     attackIndicator.setFillColor(sf::Color(255, 0, 0, 40));
+}
+
+// Ładowanie tekstur
+void Player::loadTextures() {
+    // Kolejność: DOWN=0, LEFT=1, RIGHT=2, UP=3
+    const char* idlePaths[4] = {
+        "assets/player/idle/idle_down.png",
+        "assets/player/idle/idle_left.png",
+        "assets/player/idle/idle_right.png",
+        "assets/player/idle/idle_up.png"
+    };
+    const char* runPaths[4] = {
+        "assets/player/run/run_down.png",
+        "assets/player/run/run_left.png",
+        "assets/player/run/run_right.png",
+        "assets/player/run/run_up.png"
+    };
+
+    bool allOk = true;
+    for(int d = 0; d < 4; ++d) {
+        if(!textures[0][d].loadFromFile(idlePaths[d])) allOk = false;
+        if(!textures[1][d].loadFromFile(runPaths[d])) allOk = false;
+    }
+    texturesLoaded = allOk;
+
+    if(texturesLoaded) {
+        sprite.setTexture(textures[0][static_cast<int>(AnimDir::DOWN)]);
+    }
+}
+
+// Aktualizacja animacji
+void Player::updateAnimation(const sf::Vector2f& movement, bool isMoving, float deltaTime) {
+    if(!texturesLoaded) return;
+
+    // Wyznaczanie nowego stanu i kierunku
+    AnimState newState = isMoving ? AnimState::RUN : AnimState::IDLE;
+    AnimDir newDir = animDir;
+
+    if(isMoving) {
+        // Wybieranie kierunku na podstawie dominującej osi
+        if(std::abs(movement.y) >= std::abs(movement.x)) {
+            newDir = (movement.y > 0.f) ? AnimDir::DOWN : AnimDir::UP;
+        } else {
+            newDir = (movement.x > 0.f) ? AnimDir::RIGHT : AnimDir::LEFT;
+        }
+    }
+
+    // Zmiana tekstury jeśli zmienił się stan lub kierunek
+    if(newState != animState || newDir != animDir) {
+        animState = newState;
+        animDir = newDir;
+        currentFrame = 0;   // Reset klatki przy zmianie animacji
+        frameTimer = 0.f;
+        sprite.setTexture(textures[static_cast<int>(animState)][static_cast<int>(animDir)]);
+    }
+
+    // Przesuwanie klatki animacji
+    frameTimer += deltaTime;
+    if(frameTimer >= frameSpeed) {
+        frameTimer -= frameSpeed;
+        currentFrame = (currentFrame + 1) % FRAME_COUNT;
+    }
+
+    sprite.setTextureRect(sf::IntRect(currentFrame * FRAME_W, 0, FRAME_W, FRAME_H));
 }
 
 void Player::takeDamage(int amount) {
@@ -70,14 +148,13 @@ void Player::update(float deltaTime) {
     // Nietykalność gracza
     if(invincibilityTimer > 0.f) {
         invincibilityTimer -= deltaTime;
-        // Efekt migania gracza WIP
         if(static_cast<int>(invincibilityTimer * 10) % 2 == 0) {
-            sprite.setFillColor(sf::Color(0, 0, 255, 100));
+            sprite.setColor(sf::Color(255, 255, 255, 100));
         } else {
-            sprite.setFillColor(sf::Color::Blue);
+            sprite.setColor(sf::Color::White);
         }
     } else if(!isDashing) {
-        sprite.setFillColor(sf::Color::Blue);
+        sprite.setColor(sf::Color::White);
     }
 
     float dx = mousePosition.x - position.x;
@@ -112,7 +189,7 @@ void Player::update(float deltaTime) {
         }
     }
 
-    // Atak specjalny
+    // Strzał kuszą
     if(sf::Keyboard::isKeyPressed(sf::Keyboard::R) && specialTimer >= specialCooldown) {
         wantsToShootSpecial = true;
         specialTimer = 0.f;
@@ -126,19 +203,19 @@ void Player::update(float deltaTime) {
     }
 
     // Ruch gracza
+    sf::Vector2f movement(0.f, 0.f);
+    bool isMoving = false;
+
     if(isDashing) {
         position += lastDirection * dashSpeed * deltaTime;
-        // Testowo
-        sprite.setFillColor(sf::Color(120, 120, 255));
+        sprite.setColor(sf::Color(180, 180, 255, 200));
 
         dashDurationTimer -= deltaTime;
         if(dashDurationTimer <= 0.f) {
             isDashing = false;
-            sprite.setFillColor(sf::Color::Blue); // Testowo
+            sprite.setColor(sf::Color::White);
         }
     } else {
-        sf::Vector2f movement(0.f, 0.f);
-
         // Odczyt 8 kierunków
         if(sf::Keyboard::isKeyPressed(sf::Keyboard::W)) movement.y -= 1.f;
         if(sf::Keyboard::isKeyPressed(sf::Keyboard::S)) movement.y += 1.f;
@@ -155,14 +232,13 @@ void Player::update(float deltaTime) {
             // Ruch oparty o deltaTime
             position += movement * speed * deltaTime;
 
-            // Obracanie sprite'a
-            if(movement.x > 0.f) {
-                sprite.setScale(1.f, 1.f); // w prawo
-            } else if(movement.x < 0.f) {
-                sprite.setScale(-1.f, 1.f); // w lewo
-            }
+            // Do animacji
+            isMoving = true;
         }
     }
+
+    // Animacja
+    updateAnimation(movement, isMoving, deltaTime);
 
     // Blokada wychodzenia poza okno
     if(position.x < 20.f) position.x = 20.f;
@@ -200,7 +276,7 @@ void Player::draw(sf::RenderWindow& window) {
 }
 
 sf::FloatRect Player::getBounds() const {
-    return sprite.getGlobalBounds();
+    return sf::FloatRect(position.x - 24.f, position.y - 40.f, 48.f, 80.f);
 }
 
 sf::FloatRect Player::getAttackBounds() const {

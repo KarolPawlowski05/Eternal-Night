@@ -3,10 +3,27 @@
 
 #include "GameObject.h"
 #include <cmath>
+#include <array>
+
+// Kierunki animacji
+enum class AnimDir { DOWN = 0, LEFT = 1, RIGHT = 2, UP = 3};
+// Stany animacji
+enum class AnimState { IDLE = 0, RUN = 1};
 
 class  Player : public GameObject {
 private:
-    sf::RectangleShape sprite;          // Kształt gracza
+    sf::Texture textures[2][4];         // [AnimState][AnimDir] - 8 arkuszy sprite'ów
+    sf::Sprite sprite;                  // Kształt gracza
+    static constexpr int FRAME_COUNT = 8;
+    static constexpr int FRAME_W = 96;
+    static constexpr int FRAME_H = 80;
+    int currentFrame;
+    float frameTimer;
+    float frameSpeed;                   // Sekundy na klatkę
+    AnimState animState;
+    AnimDir animDir;
+    bool texturesLoaded;
+
     sf::RectangleShape attackIndicator; //Prostokąt pokazujący obszar ataku
 
     float speed;                        // Prędkość liniowa w px/s
@@ -68,6 +85,10 @@ private:
     float dodgeChance;
     int hpRegenRate;
     float hpRegenTimer;
+
+    // Metody pomocnicze animacji
+    void loadTextures();
+    void updateAnimation(const sf::Vector2f& movement, bool isMoving, float deltaTime);
 public:
     Player(float x, float y);
 
@@ -114,12 +135,10 @@ public:
     float getSpeed() const { return speed; }
 
     sf::FloatRect getPickupBounds() const {
-        sf::FloatRect bounds = sprite.getGlobalBounds();
-        bounds.left -= pickupRadiusBonus;
-        bounds.top -= pickupRadiusBonus;
-        bounds.width += pickupRadiusBonus * 2.f;
-        bounds.height += pickupRadiusBonus * 2.f;
-        return bounds;
+        float baseRadius = 30.f;
+        float totalRadius = baseRadius + pickupRadiusBonus;
+
+        return sf::FloatRect(position.x - totalRadius, position.y - totalRadius, totalRadius * 2.f, totalRadius * 2.f);
     }
 
     float getDodgeChance() const { return dodgeChance; }

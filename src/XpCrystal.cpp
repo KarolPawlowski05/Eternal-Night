@@ -9,7 +9,6 @@ XpCrystal::XpCrystal(float x, float y, int value) : GameObject(x, y), xpValue(va
 }
 
 void XpCrystal::update(float deltaTime) {
-    // Pozniej do animacji
 }
 
 void XpCrystal::draw(sf::RenderWindow& window) {
