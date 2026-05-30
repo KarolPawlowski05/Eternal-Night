@@ -4,20 +4,31 @@ Projectile::Projectile(float startX, float startY, sf::Vector2f direction) : Gam
 
     velocity = direction * speed;
 
-    shape.setSize(sf::Vector2f(20.f, 4.f));
-    shape.setFillColor(sf::Color::Yellow);
-    shape.setOrigin(10.f, 2.f);
-    shape.setPosition(position);
+    if(arrowTexture.loadFromFile("assets/player/attacks/crossbow/arrow.png")) {
+        arrowSprite.setTexture(arrowTexture);
+        sf::FloatRect tb = arrowSprite.getLocalBounds();
+        arrowSprite.setOrigin(tb.width / 2.f, tb.height / 2.f);
+    } else {
+        // Error – biały prostokąt w rozmiarze strzałki (20x5)
+        arrowTexture.create(20, 5);
+        sf::Image img;
+        img.create(20, 5, sf::Color::White);
+        arrowTexture.loadFromImage(img);
+        arrowSprite.setTexture(arrowTexture);
+        arrowSprite.setOrigin(10.f, 2.5f);
+    }
+
+    arrowSprite.setPosition(position);
 
     // Ustawienie rotacji pocisku zgodnie z kierunkiem lotu
     float angle = std::atan2(direction.y, direction.x) * 180.f / 3.14159265f;
-    shape.setRotation(angle);
+    arrowSprite.setRotation(angle);
 }
 
 void Projectile::update(float deltaTime) {
     // Lot pocisku
     position += velocity * deltaTime;
-    shape.setPosition(position);
+    arrowSprite.setPosition(position);
 
     // Niszczenie pocisku, gdy wyleci poza okno
     if(position.x < -50.f || position.x > 1330.f || position.y < -50.f || position.y > 770.f) {
@@ -26,9 +37,9 @@ void Projectile::update(float deltaTime) {
 }
 
 void Projectile::draw(sf::RenderWindow& window) {
-    window.draw(shape);
+    window.draw(arrowSprite);
 }
 
 sf::FloatRect Projectile::getBounds() const {
-    return shape.getGlobalBounds();
+    return arrowSprite.getGlobalBounds();
 }

@@ -6,7 +6,8 @@
 
 class Projectile : public GameObject {
 private:
-    sf::RectangleShape shape;
+    sf::Texture arrowTexture;
+    sf::Sprite arrowSprite;
     sf::Vector2f velocity;
     float speed;
 

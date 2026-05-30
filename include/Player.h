@@ -15,8 +15,8 @@ private:
     sf::Texture textures[2][4];         // [AnimState][AnimDir] - 8 arkuszy sprite'ów
     sf::Sprite sprite;                  // Kształt gracza
     static constexpr int FRAME_COUNT = 8;
-    static constexpr int FRAME_W = 96;
-    static constexpr int FRAME_H = 80;
+    static constexpr int FRAME_W = 192;
+    static constexpr int FRAME_H = 160;
     int currentFrame;
     float frameTimer;
     float frameSpeed;                   // Sekundy na klatkę
@@ -24,7 +24,16 @@ private:
     AnimDir animDir;
     bool texturesLoaded;
 
-    sf::RectangleShape attackIndicator; //Prostokąt pokazujący obszar ataku
+    // Animacja ataku
+    sf::Texture attackTextures[2][4];   // [comboVariant 0/1]
+    sf::Sprite attackSprite;
+    int attackAnimFrame;                // Bieżąca klatka animacji ataku
+    float attackAnimTimer;
+    static constexpr float ATTACK_ANIM_SPEED = 0.07f; // s/klatkę -> 8 klatek = 0.56s
+    bool showAttackAnim;
+    int attackCombo;
+
+    sf::RectangleShape attackIndicator; // Prostokąt pokazujący obszar ataku
 
     float speed;                        // Prędkość liniowa w px/s
     sf::Vector2f lastDirection;         // Ostatni kierunek ruchu
@@ -74,7 +83,8 @@ private:
     float fireAuraRadius;
 
     bool hasOrbitingSword;
-    sf::RectangleShape orbitSwordShape;
+    sf::Texture orbitSwordTexture;
+    sf::Sprite orbitSwordShape;
     float orbitAngle;
     float orbitSpeed;
 

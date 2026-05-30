@@ -24,9 +24,6 @@ Engine::Engine() {
     timeBetweenWaves = 20.0f; // Nowa fala atakuje co 20 sekund
     waveTimer = 20.0f;        // Ustawiamy na 20, żeby PIERWSZA fala zrespiła się od razu po starcie gry!
 
-
-
-
     // --- LOSOWE GENEROWANIE PRZESZKÓD ---
     for (int i = 0; i < 5; ++i) {
         float randX = rand() % 1200 + 40; // Losowanie żeby nie wystawały poza ekran
@@ -34,9 +31,9 @@ Engine::Engine() {
         int randType = rand() % 3;
 
         ObstacleType type;
-        if (randType == 0) type = ObstacleType::DRZEWO;
-        else if (randType == 1) type = ObstacleType::KRZAK;
-        else type = ObstacleType::GLAZ;
+        if (randType == 0) type = ObstacleType::TREE;
+        else if (randType == 1) type = ObstacleType::BUSH;
+        else type = ObstacleType::ROCK;
 
         gameObjects.push_back(std::make_shared<Obstacle>(randX, randY, type));
     }
@@ -69,6 +66,18 @@ Engine::Engine() {
     }
     currentState = GameState::PLAYING;
 
+    // Tło trawy
+
+    if(grassTexture.loadFromFile("assets/map/background/floor/grass.png")) {
+        grassTexture.setRepeated(true);
+        grassTexture.setSmooth(false);
+
+        grassBackground.setTexture(grassTexture);
+        grassBackground.setTextureRect(sf::IntRect(0, 0, 640, 360));
+        grassBackground.setScale(2.f, 2.f);
+        grassBackground.setPosition(0.f, 0.f);
+    }
+
     // Ładowanie czcionki i tworzenie kart ulepszeń
     if(font.loadFromFile("assets/fonts/PixelGame.otf")) {
         textTitle.setFont(font);
@@ -91,6 +100,9 @@ Engine::Engine() {
         hudStatsText.setFillColor(sf::Color(200, 200, 200));
         hudStatsText.setPosition(20.f, 20.f);
     }
+
+    // Debug
+    debugMode = false;
 }
 
 void Engine::handleEvents() {
@@ -99,9 +111,11 @@ void Engine::handleEvents() {
         if(event.type == sf::Event::Closed) {
             window.close();
         }
+
         if(event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Escape) {
             window.close();
         }
+
         // Obsługa kliknięć w menu awansu
         if (currentState == GameState::LEVEL_UP && event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left) {
             sf::Vector2f mousePos = window.mapPixelToCoords(sf::Mouse::getPosition(window));
@@ -110,7 +124,12 @@ void Engine::handleEvents() {
             else if (card2.getGlobalBounds().contains(mousePos)) { player->applyUpgrade(offeredUpgrades[1]); currentState = GameState::PLAYING; }
             else if (card3.getGlobalBounds().contains(mousePos)) { player->applyUpgrade(offeredUpgrades[2]); currentState = GameState::PLAYING; }
         }
-}
+
+        // Obsługa debug
+        if(event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::F3) {
+            debugMode = !debugMode;
+        }
+    }
 }
 
 void Engine::update(float deltaTime) {
@@ -333,7 +352,8 @@ void Engine::update(float deltaTime) {
 }
 
 void Engine::render() {
-    window.clear(sf::Color(30, 30, 30));
+    window.clear();
+    window.draw(grassBackground);
 
     // Rysowanie wszystkich obiektów
     for(auto& obj : gameObjects) {
@@ -379,6 +399,8 @@ void Engine::render() {
         window.draw(card3); window.draw(textCard3);
         window.draw(textTitle);
     }
+
+    if(debugMode) drawDebugOverlay();
 
     window.display();
 }
@@ -484,4 +506,62 @@ void Engine::generateUpgrades() {
         else if(i == 1) { textCard2.setString(text); card2.setFillColor(color); }
         else if(i == 2) { textCard3.setString(text); card3.setFillColor(color); }
     }
+}
+
+// Rysowanie prostokąta hitboxa
+void Engine::drawDebugRect(sf::FloatRect b, sf::Color color) {
+    sf::RectangleShape rect(sf::Vector2f(b.width, b.height));
+    rect.setPosition(b.left, b.top);
+    rect.setFillColor(sf::Color(color.r, color.g, color.b, 40));
+    rect.setOutlineColor(color);
+    rect.setOutlineThickness(1.f);
+    window.draw(rect);
+}
+
+void Engine::drawDebugCircle(sf::Vector2f center, float radius, sf::Color color) {
+    sf::CircleShape circle(radius);
+    circle.setOrigin(radius, radius);
+    circle.setPosition(center);
+    circle.setFillColor(sf::Color(color.r, color.g, color.b, 30));
+    circle.setOutlineColor(color);
+    circle.setOutlineThickness(1.f);
+    window.draw(circle);
+}
+
+void Engine::drawDebugOverlay() {
+    for(auto& obj : gameObjects) {
+        if(!obj->isActive() || obj.get() == player.get()) continue;
+
+        sf::FloatRect b = obj->getBounds();
+        sf::Color color;
+
+        if      (dynamic_cast<Enemy*>       (obj.get()))    color = sf::Color(255, 60, 60);
+        else if (dynamic_cast<Projectile*>  (obj.get()))    color = sf::Color(255, 255, 0);
+        else if (dynamic_cast<XpCrystal*>   (obj.get()))    color = sf::Color(0, 220, 220);
+        else if (dynamic_cast<Bonus*>       (obj.get()))    color = sf::Color(220, 0, 200);
+        else if (dynamic_cast<Obstacle*>    (obj.get()))    color = sf::Color(180, 120, 40);
+        else                                                color = sf::Color(200, 200, 200);
+
+        drawDebugRect(b, color);
+    }
+
+    // Gracz
+    // Hitbox ciała
+    drawDebugRect(player->getBounds(), sf::Color(0, 255, 0));
+
+    // Hitbox ataku
+    if(player->getIsAttacking()) {
+        drawDebugRect(player->getAttackBounds(), sf::Color(255, 180, 0));
+    }
+
+    // Zasięg podnoszenia
+    drawDebugCircle(player->getPosition(), player->getPickupBounds().width / 2.f, sf::Color(80, 80, 255));
+
+    // Orbitujace ostrze
+    if(player->getHasOrbitingSword()) {
+        drawDebugRect(player->getOrbitingSwordBounds(), sf::Color(0, 255, 220));
+    }
+
+    // Napis
+    window.draw(debugLabel);
 }

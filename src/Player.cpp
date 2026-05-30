@@ -3,22 +3,28 @@
 // Konstruktor
 Player::Player(float x, float y)
     : GameObject(x, y),
-    // Animacja
+    // Animacja ruchu
     currentFrame(0), frameTimer(0.f), frameSpeed(0.1f), animState(AnimState::IDLE), animDir(AnimDir::DOWN), texturesLoaded(false),
+    // Animacja ataku
+    attackAnimFrame(0), attackAnimTimer(0.f), showAttackAnim(false), attackCombo(0),
     // Inne
     hp(100), maxHp(100), invincibilityTimer(0.f),
     speed(250.f),
     lastDirection(0.f, -1.f),
-    attackSize(80.f, 60.f), attackCooldown(0.7f), attackTimer(0.f), attackDuration(0.1f), durationTimer(0.f), isAttacking(false), specialCooldown(5.0f), specialTimer(10.0f), wantsToShootSpecial(false),
+    attackSize(80.f, 60.f), attackCooldown(0.7f), attackTimer(0.f), attackDuration(0.3f), durationTimer(0.f), isAttacking(false), specialCooldown(5.0f), specialTimer(10.0f), wantsToShootSpecial(false),
     dashSpeed(650.f), dashCooldown(2.0f), dashTimer(2.0f), dashDuration(0.25f), dashDurationTimer(0.f), isDashing(false),
     xp(0), maxXp(20), level(1),
     damageBonus(0), armor(0), critChance(0.05f), enemiesKilled(0), potionsCollected(0), vampirismChance(0.0f), pickupRadiusBonus(0.f), dodgeChance(0.0f), hpRegenRate(0), hpRegenTimer(0.f)
-
 {
     loadTextures();
-    // Origin na środek kadru
-    sprite.setScale(2.f, 2.f);
+
+    // Sprite gracza
     sprite.setOrigin(FRAME_W / 2.f, FRAME_H / 2.f);
+    sprite.setPosition(position);
+    sprite.setTextureRect(sf::IntRect(0, 0, FRAME_W, FRAME_H));
+
+    // Sprite ataku
+    attackSprite.setOrigin(FRAME_W / 2.f, FRAME_H / 2.f);
     sprite.setPosition(position);
     sprite.setTextureRect(sf::IntRect(0, 0, FRAME_W, FRAME_H));
 
@@ -40,10 +46,10 @@ Player::Player(float x, float y)
     attackCooldownBarForeground.setFillColor(sf::Color::Yellow);
     attackCooldownBarForeground.setOrigin(25.f, 2.f);
 
-    // Konfiguracja wskaźnika ataku
+    // Konfiguracja wskaźnika ataku (pomocniczy hitbox)
     attackIndicator.setSize(attackSize);
     attackIndicator.setOrigin(0.f, attackSize.y / 2.f);
-    attackIndicator.setFillColor(sf::Color(255, 0, 0, 40));
+    attackIndicator.setFillColor(sf::Color(255, 0, 0, 0));
 
     // Konfiguracja Aury Ognia
     hasFireAura = false;
@@ -56,9 +62,12 @@ Player::Player(float x, float y)
     hasOrbitingSword = false;
     orbitAngle = 0.f;
     orbitSpeed = 200.f; // 200 stopni na sekundę
-    orbitSwordShape.setSize(sf::Vector2f(50.f, 15.f));
-    orbitSwordShape.setOrigin(25.f, 7.5f);
-    orbitSwordShape.setFillColor(sf::Color(0, 255, 255, 200));
+    if(orbitSwordTexture.loadFromFile("assets/player/attacks/orbitingSword/sword.png")) {
+        orbitSwordTexture.setSmooth(false);
+        orbitSwordShape.setTexture(orbitSwordTexture);
+        sf::FloatRect lb = orbitSwordShape.getLocalBounds();
+        orbitSwordShape.setOrigin(lb.width / 2.f, lb.height / 2.f);
+    }
 }
 
 // Ładowanie tekstur
@@ -76,20 +85,39 @@ void Player::loadTextures() {
         "assets/player/run/run_right.png",
         "assets/player/run/run_up.png"
     };
+    // attack1 i attack2
+    const char* attackPaths[2][4] = {
+        {
+            "assets/player/attacks/baseAttack/attack1_down.png",
+            "assets/player/attacks/baseAttack/attack1_left.png",
+            "assets/player/attacks/baseAttack/attack1_right.png",
+            "assets/player/attacks/baseAttack/attack1_up.png"
+        },
+        {
+            "assets/player/attacks/baseAttack/attack2_down.png",
+            "assets/player/attacks/baseAttack/attack2_left.png",
+            "assets/player/attacks/baseAttack/attack2_right.png",
+            "assets/player/attacks/baseAttack/attack2_up.png"
+        }
+    };
 
     bool allOk = true;
     for(int d = 0; d < 4; ++d) {
         if(!textures[0][d].loadFromFile(idlePaths[d])) allOk = false;
         if(!textures[1][d].loadFromFile(runPaths[d])) allOk = false;
+        for(int c = 0; c < 2; ++c) {
+            if(!attackTextures[c][d].loadFromFile(attackPaths[c][d])) allOk = false;
+        }
     }
     texturesLoaded = allOk;
 
     if(texturesLoaded) {
         sprite.setTexture(textures[0][static_cast<int>(AnimDir::DOWN)]);
+        attackSprite.setTexture(attackTextures[0][static_cast<int>(AnimDir::DOWN)]);
     }
 }
 
-// Aktualizacja animacji
+// Aktualizacja animacji ruchu
 void Player::updateAnimation(const sf::Vector2f& movement, bool isMoving, float deltaTime) {
     if(!texturesLoaded) return;
 
@@ -143,11 +171,31 @@ void Player::takeDamage(int amount) {
     }
 }
 
+// Uruchamia hitbox i animacje
 void Player::castAttack() {
+    // Hitbox aktywny
     isAttacking = true;
     durationTimer = attackDuration;
 
-    attackIndicator.setFillColor(sf::Color(255, 0, 0, 255));
+    // Wybieranie kieruneku na podstawie pozycji myszy
+    AnimDir dir;
+    if(std::abs(mouseDirection.y) >= std::abs(mouseDirection.x)) {
+        dir = (mouseDirection.y > 0.f) ? AnimDir::DOWN : AnimDir::UP;
+    } else {
+        dir = (mouseDirection.x > 0.f) ? AnimDir::RIGHT : AnimDir::LEFT;
+    }
+
+    // Ustawienie odpowiedniej tekstury (1 lub 2)
+    if(texturesLoaded) {
+        attackSprite.setTexture(attackTextures[attackCombo][static_cast<int>(dir)]);
+    }
+    attackCombo = (attackCombo + 1) % 2; // Zmiana wariantu
+
+    // Reset animacji
+    attackAnimFrame = 0;
+    attackAnimTimer = 0.f;
+    showAttackAnim = true;
+    attackSprite.setTextureRect(sf::IntRect(0, 0, FRAME_W, FRAME_H));
 }
 
 void Player::update(float deltaTime) {
@@ -164,15 +212,15 @@ void Player::update(float deltaTime) {
     // Nietykalność gracza
     if(invincibilityTimer > 0.f) {
         invincibilityTimer -= deltaTime;
-        if(static_cast<int>(invincibilityTimer * 10) % 2 == 0) {
-            sprite.setColor(sf::Color(255, 255, 255, 100));
-        } else {
-            sprite.setColor(sf::Color::White);
-        }
+        sf::Color blinkColor = static_cast<int>(invincibilityTimer * 10) % 2 == 0 ? sf::Color(255, 255, 255, 100) : sf::Color::White;
+        sprite.setColor(blinkColor);
+        attackSprite.setColor(blinkColor);
     } else if(!isDashing) {
         sprite.setColor(sf::Color::White);
+        attackSprite.setColor(sf::Color::White);
     }
 
+    // Kierunek myszy
     float dx = mousePosition.x - position.x;
     float dy = mousePosition.y - position.y;
     float dist = std::sqrt(dx * dx + dy * dy);
@@ -196,13 +244,27 @@ void Player::update(float deltaTime) {
     }
     prevLMBPressed = lmbNow;
 
-    // Wygaszanie "błysku" ataku po upływie attackDuration
+    // Wyłącz hitbox po upływie attackDuration
     if(isAttacking) {
         durationTimer -= deltaTime;
-        if(durationTimer <= 0.f) {
-            isAttacking = false;
-            attackIndicator.setFillColor(sf::Color(255, 0, 0, 40));
+        if(durationTimer <= 0.f) isAttacking = false;
+    }
+
+    // Animacja ataku
+    if(showAttackAnim) {
+        attackAnimTimer += deltaTime;
+        if(attackAnimTimer >= ATTACK_ANIM_SPEED) {
+            attackAnimTimer -= ATTACK_ANIM_SPEED;
+            attackAnimFrame++;
+            if(attackAnimFrame >= FRAME_COUNT) {
+                // Animacja skonczona
+                showAttackAnim = false;
+                attackAnimFrame = 0;
+            } else {
+                attackSprite.setTextureRect(sf::IntRect(attackAnimFrame * FRAME_W, 0, FRAME_W, FRAME_H));
+            }
         }
+        attackSprite.setPosition(position);
     }
 
     // Strzał kuszą
@@ -224,12 +286,15 @@ void Player::update(float deltaTime) {
 
     if(isDashing) {
         position += lastDirection * dashSpeed * deltaTime;
-        sprite.setColor(sf::Color(180, 180, 255, 200));
-
+        sf::Color dashColor(180, 180, 255, 200);
+        sprite.setColor(dashColor);
+        attackSprite.setColor(dashColor);
         dashDurationTimer -= deltaTime;
+
         if(dashDurationTimer <= 0.f) {
             isDashing = false;
             sprite.setColor(sf::Color::White);
+            attackSprite.setColor(sf::Color::White);
         }
     } else {
         // Odczyt 8 kierunków
@@ -280,7 +345,7 @@ void Player::update(float deltaTime) {
         float rad = orbitAngle * 3.14159f / 180.f;
         float orbitDistance = 100.f; // Jak daleko od gracza lata miecz
         orbitSwordShape.setPosition(position.x + std::cos(rad) * orbitDistance, position.y + std::sin(rad) * orbitDistance);
-        orbitSwordShape.setRotation(orbitAngle + 90.f); // Ostrze zwrócone w stronę lotu
+        orbitSwordShape.setRotation(orbitAngle - 45.f); // Ostrze zwrócone w stronę lotu
     }
 
     // Pasek HP
@@ -301,14 +366,17 @@ void Player::draw(sf::RenderWindow& window) {
     window.draw(hpBarForeground);
     window.draw(attackCooldownBarBackground);
     window.draw(attackCooldownBarForeground);
-    window.draw(attackIndicator);
     if (hasFireAura) window.draw(fireAuraShape);
     if (hasOrbitingSword) window.draw(orbitSwordShape);
-    window.draw(sprite);
+    if(showAttackAnim) {
+        window.draw(attackSprite);
+    } else {
+        window.draw(sprite);
+    }
 }
 
 sf::FloatRect Player::getBounds() const {
-    return sf::FloatRect(position.x - 24.f, position.y - 40.f, 48.f, 80.f);
+    return sf::FloatRect(position.x - 24.f, position.y - 32.f, 48.f, 68.f);
 }
 
 sf::FloatRect Player::getAttackBounds() const {

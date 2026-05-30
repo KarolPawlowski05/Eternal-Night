@@ -37,11 +37,23 @@ private:
 
     int offeredUpgrades[3];
     void generateUpgrades();
+
     // System Nieskończonych Fal
     int currentWave;
     float waveTimer;
     float timeBetweenWaves; // Czas między kolejnymi falami
     void spawnWave();       // Zastępuje stare spawnEnemy()
+
+    // Tło trawy
+    sf::Texture grassTexture;
+    sf::Sprite grassBackground;
+
+    // Debug overlay (klawisz F3)
+    bool debugMode;
+    void drawDebugOverlay();
+    void drawDebugRect(sf::FloatRect bounds, sf::Color color);
+    void drawDebugCircle(sf::Vector2f center, float radius, sf::Color color);
+    sf::Text debugLabel;
 
 public:
     Engine();
