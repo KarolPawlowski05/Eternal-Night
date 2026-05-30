@@ -68,6 +68,15 @@ Player::Player(float x, float y)
         sf::FloatRect lb = orbitSwordShape.getLocalBounds();
         orbitSwordShape.setOrigin(lb.width / 2.f, lb.height / 2.f);
     }
+
+    // Konfiguracja paska przeładowania kuszy
+    specialCooldownBarBackground.setSize(sf::Vector2f(50.f, 4.f));
+    specialCooldownBarBackground.setFillColor(sf::Color(50, 0, 50)); // Ciemnofioletowy tło
+    specialCooldownBarBackground.setOrigin(25.f, 2.f);
+
+    specialCooldownBarForeground.setSize(sf::Vector2f(50.f, 4.f));
+    specialCooldownBarForeground.setFillColor(sf::Color(255, 0, 255)); // Magenta (Kusza)
+    specialCooldownBarForeground.setOrigin(25.f, 2.f);
 }
 
 // Ładowanie tekstur
@@ -359,6 +368,12 @@ void Player::update(float deltaTime) {
     attackCooldownBarForeground.setSize(sf::Vector2f(50.f * cdPercent, 4.f));
     attackCooldownBarBackground.setPosition(position.x, position.y + 38.f);
     attackCooldownBarForeground.setPosition(position.x, position.y + 38.f);
+
+    // Pasek kuszy
+    float spPercent = std::min(1.f, specialTimer / specialCooldown);
+    specialCooldownBarForeground.setSize(sf::Vector2f(50.f * spPercent, 4.f));
+    specialCooldownBarBackground.setPosition(position.x, position.y + 44.f);
+    specialCooldownBarForeground.setPosition(position.x, position.y + 44.f);
 }
 
 void Player::draw(sf::RenderWindow& window) {
@@ -366,6 +381,8 @@ void Player::draw(sf::RenderWindow& window) {
     window.draw(hpBarForeground);
     window.draw(attackCooldownBarBackground);
     window.draw(attackCooldownBarForeground);
+    window.draw(specialCooldownBarBackground);
+    window.draw(specialCooldownBarForeground);
     if (hasFireAura) window.draw(fireAuraShape);
     if (hasOrbitingSword) window.draw(orbitSwordShape);
     if(showAttackAnim) {

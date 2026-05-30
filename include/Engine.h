@@ -6,7 +6,7 @@
 #include <memory>
 #include "GameObject.h"
 
-enum class GameState { PLAYING, LEVEL_UP };
+enum class GameState { MAIN_MENU, PLAYING, LEVEL_UP, GAME_OVER, PAUSED };
 class Player;
 
 class Engine {
@@ -54,6 +54,34 @@ private:
     void drawDebugRect(sf::FloatRect bounds, sf::Color color);
     void drawDebugCircle(sf::Vector2f center, float radius, sf::Color color);
     sf::Text debugLabel;
+
+    float gameTime; // Całkowity czas gry do timera i wyniku
+
+    // Pasek XP na górze ekranu
+    sf::RectangleShape xpBarBackground;
+    sf::RectangleShape xpBarForeground;
+
+    // Elementy UI Menu Głównego
+    sf::Text menuTitle;
+    sf::RectangleShape btnStart;
+    sf::Text textStart;
+    sf::RectangleShape btnQuit;
+    sf::Text textQuit;
+
+    // Elementy UI Ekranu Śmierci
+    sf::Text textGameOver;
+    sf::Text textFinalScore;
+    sf::RectangleShape btnReturn;
+    sf::Text textReturn;
+
+    // Elementy UI Menu Pauzy
+    sf::Text textPaused;
+    sf::RectangleShape btnResume;
+    sf::Text textResume;
+    sf::RectangleShape btnPauseReturn;
+    sf::Text textPauseReturn;
+
+    void resetGame();
 
 public:
     Engine();

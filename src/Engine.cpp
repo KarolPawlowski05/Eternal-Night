@@ -14,19 +14,231 @@ Engine::Engine() {
     // Rozmiar okna
     window.create(sf::VideoMode(1280, 720), "Eternal Night");
 
-    // Gracz na środku ekranu
-    player = std::make_shared<Player>(640.f, 360.f);
+    // Gra startuje w Menu Głównym
+    currentState = GameState::MAIN_MENU;
+    gameTime = 0.f;
 
-    // Gracz do kontenera obiektów gry
+    xpBarBackground.setSize(sf::Vector2f(1280.f, 15.f)); // Pasek na całą szerokość ekranu
+    xpBarBackground.setFillColor(sf::Color(30, 30, 30));
+    xpBarBackground.setPosition(0.f, 0.f);
+
+    xpBarForeground.setSize(sf::Vector2f(0.f, 15.f));
+    xpBarForeground.setFillColor(sf::Color(0, 150, 255)); // Błękitny kolor XP
+    xpBarForeground.setPosition(0.f, 0.f);
+
+
+    // Tło trawy
+
+    if(grassTexture.loadFromFile("assets/map/background/floor/grass.png")) {
+        grassTexture.setRepeated(true);
+        grassTexture.setSmooth(false);
+
+        grassBackground.setTexture(grassTexture);
+        grassBackground.setTextureRect(sf::IntRect(0, 0, 640, 360));
+        grassBackground.setScale(2.f, 2.f);
+        grassBackground.setPosition(0.f, 0.f);
+    }
+
+    // Ładowanie czcionki i konfiguracja całego interfejsu użytkownika (UI)
+    if(font.loadFromFile("assets/fonts/PixelGame.otf")) {
+        sf::FloatRect textBounds;
+
+        // 1. EKRAN AWANSU (LEVEL UP) & HUD
+        textTitle.setFont(font);
+        textTitle.setString("AWANS! WYBIERZ ULEPSZENIE");
+        textTitle.setCharacterSize(40);
+        textTitle.setFillColor(sf::Color::White);
+        textBounds = textTitle.getLocalBounds();
+        textTitle.setOrigin(textBounds.left + textBounds.width / 2.f, textBounds.top + textBounds.height / 2.f);
+        textTitle.setPosition(640.f, 120.f); // Środek ekranu w poziomie
+
+        card1.setSize(sf::Vector2f(250.f, 350.f)); card1.setPosition(200.f, 200.f);
+        textCard1.setFont(font); textCard1.setCharacterSize(24); textCard1.setPosition(220.f, 350.f);
+
+        card2.setSize(sf::Vector2f(250.f, 350.f)); card2.setPosition(500.f, 200.f);
+        textCard2.setFont(font); textCard2.setCharacterSize(24); textCard2.setPosition(520.f, 350.f);
+
+        card3.setSize(sf::Vector2f(250.f, 350.f)); card3.setPosition(800.f, 200.f);
+        textCard3.setFont(font); textCard3.setCharacterSize(24); textCard3.setPosition(820.f, 350.f);
+
+        hudStatsText.setFont(font);
+        hudStatsText.setCharacterSize(16);
+        hudStatsText.setFillColor(sf::Color(200, 200, 200));
+        hudStatsText.setPosition(20.f, 20.f);
+
+        // 2. MENU GŁÓWNE
+        menuTitle.setFont(font);
+        menuTitle.setString("ETERNAL NIGHT");
+        menuTitle.setCharacterSize(80);
+        menuTitle.setFillColor(sf::Color(255, 200, 0));
+        textBounds = menuTitle.getLocalBounds();
+        menuTitle.setOrigin(textBounds.left + textBounds.width / 2.f, textBounds.top + textBounds.height / 2.f);
+        menuTitle.setPosition(640.f, 140.f);
+
+        // Przycisk START
+        btnStart.setSize(sf::Vector2f(300.f, 60.f));
+        btnStart.setPosition(490.f, 300.f);
+        btnStart.setFillColor(sf::Color(50, 50, 100));
+
+        textStart.setFont(font);
+        textStart.setString("Start game");
+        textStart.setCharacterSize(30);
+        textBounds = textStart.getLocalBounds();
+        textStart.setOrigin(textBounds.left + textBounds.width / 2.f, textBounds.top + textBounds.height / 2.f);
+        // Pozycja: środek przycisku
+        textStart.setPosition(490.f + 150.f, 300.f + 30.f);
+
+        // Przycisk QUIT
+        btnQuit.setSize(sf::Vector2f(300.f, 60.f));
+        btnQuit.setPosition(490.f, 400.f);
+        btnQuit.setFillColor(sf::Color(100, 50, 50));
+
+        textQuit.setFont(font);
+        textQuit.setString("Quit");
+        textQuit.setCharacterSize(30);
+        textBounds = textQuit.getLocalBounds();
+        textQuit.setOrigin(textBounds.left + textBounds.width / 2.f, textBounds.top + textBounds.height / 2.f);
+        textQuit.setPosition(490.f + 150.f, 400.f + 30.f);
+
+        // 3. MENU PAUZY
+        textPaused.setFont(font);
+        textPaused.setString("PAUZA");
+        textPaused.setCharacterSize(80);
+        textPaused.setFillColor(sf::Color::Yellow);
+        textBounds = textPaused.getLocalBounds();
+        textPaused.setOrigin(textBounds.left + textBounds.width / 2.f, textBounds.top + textBounds.height / 2.f);
+        textPaused.setPosition(640.f, 190.f);
+
+        // Przycisk WZNÓW (RESUME)
+        btnResume.setSize(sf::Vector2f(300.f, 60.f));
+        btnResume.setPosition(490.f, 300.f);
+        btnResume.setFillColor(sf::Color(50, 100, 50));
+
+        textResume.setFont(font);
+        textResume.setString("Wznow gre");
+        textResume.setCharacterSize(30);
+        textBounds = textResume.getLocalBounds();
+        textResume.setOrigin(textBounds.left + textBounds.width / 2.f, textBounds.top + textBounds.height / 2.f);
+        textResume.setPosition(490.f + 150.f, 300.f + 30.f);
+
+        // Przycisk POWRÓT Z PAUZY
+        btnPauseReturn.setSize(sf::Vector2f(300.f, 60.f));
+        btnPauseReturn.setPosition(490.f, 400.f);
+        btnPauseReturn.setFillColor(sf::Color(100, 50, 50));
+
+        textPauseReturn.setFont(font);
+        textPauseReturn.setString("Wroc do menu");
+        textPauseReturn.setCharacterSize(30);
+        textBounds = textPauseReturn.getLocalBounds();
+        textPauseReturn.setOrigin(textBounds.left + textBounds.width / 2.f, textBounds.top + textBounds.height / 2.f);
+        textPauseReturn.setPosition(490.f + 150.f, 400.f + 30.f);
+
+        // 4. EKRAN ŚMIERCI (GAME OVER)
+        // Napis ZGINĄŁEŚ! na środku ekranu
+        textGameOver.setFont(font);
+        textGameOver.setString("ZGINALES!");
+        textGameOver.setCharacterSize(80);
+        textGameOver.setFillColor(sf::Color::Red);
+        textBounds = textGameOver.getLocalBounds();
+        textGameOver.setOrigin(textBounds.left + textBounds.width / 2.f, textBounds.top + textBounds.height / 2.f);
+        textGameOver.setPosition(640.f, 190.f);
+
+        // Wynik ostateczny na środku ekranu
+        textFinalScore.setFont(font);
+        textFinalScore.setCharacterSize(40);
+        // Wyśrodkowanie dla textFinalScore zrobimy dynamicznie w update(),
+        // ale ustawiamy mu bazowy punkt origin na środek
+        textBounds = textFinalScore.getLocalBounds();
+        textFinalScore.setOrigin(textBounds.left + textBounds.width / 2.f, textBounds.top + textBounds.height / 2.f);
+        textFinalScore.setPosition(640.f, 320.f);
+
+        // Przycisk POWRÓT DO MENU
+        btnReturn.setSize(sf::Vector2f(300.f, 60.f));
+        btnReturn.setPosition(490.f, 450.f);
+        btnReturn.setFillColor(sf::Color(80, 80, 80));
+
+        textReturn.setFont(font);
+        textReturn.setString("Powrot do menu");
+        textReturn.setCharacterSize(30);
+        textBounds = textReturn.getLocalBounds();
+        textReturn.setOrigin(textBounds.left + textBounds.width / 2.f, textBounds.top + textBounds.height / 2.f);
+        textReturn.setPosition(490.f + 150.f, 450.f + 30.f);
+    }
+
+    // Debug
+    debugMode = false;
+}
+
+void Engine::handleEvents() {
+    sf::Event event;
+    while(window.pollEvent(event)) {
+        if(event.type == sf::Event::Closed) {
+            window.close();
+        }
+
+        if(event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Escape) {
+            if (currentState == GameState::PLAYING) {
+                currentState = GameState::PAUSED; // Włącz pauzę
+            } else if (currentState == GameState::PAUSED) {
+                currentState = GameState::PLAYING; // Wyłącz pauzę (wznów)
+            } else if (currentState == GameState::MAIN_MENU) {
+                window.close(); // Wyjdź z gry tylko z poziomu menu głównego
+            }
+        }
+        // Obsługa debug
+        if(event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::F3) {
+            debugMode = !debugMode;
+        }
+        // OBSŁUGA MYSZKI W ZALEŻNOŚCI OD EKRANU
+        if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left) {
+            sf::Vector2f mousePos = window.mapPixelToCoords(sf::Mouse::getPosition(window));
+
+            if (currentState == GameState::MAIN_MENU) {
+                if (btnStart.getGlobalBounds().contains(mousePos)) {
+                    resetGame(); // Resetuje i ładuje gracza/przeszkody
+                    currentState = GameState::PLAYING;
+                } else if (btnQuit.getGlobalBounds().contains(mousePos)) {
+                    window.close();
+                }
+            }
+            // OBSŁUGA KLIKNIĘĆ W MENU PAUZY
+            else if (currentState == GameState::PAUSED) {
+                if (btnResume.getGlobalBounds().contains(mousePos)) {
+                    currentState = GameState::PLAYING;
+                } else if (btnPauseReturn.getGlobalBounds().contains(mousePos)) {
+                    currentState = GameState::MAIN_MENU;
+                }
+            }
+            else if (currentState == GameState::GAME_OVER) {
+                if (btnReturn.getGlobalBounds().contains(mousePos)) {
+                    currentState = GameState::MAIN_MENU; // Wracamy do menu startowego
+                }
+            }
+            else if (currentState == GameState::LEVEL_UP) {
+                if (card1.getGlobalBounds().contains(mousePos)) { player->applyUpgrade(offeredUpgrades[0]); currentState = GameState::PLAYING; }
+                else if (card2.getGlobalBounds().contains(mousePos)) { player->applyUpgrade(offeredUpgrades[1]); currentState = GameState::PLAYING; }
+                else if (card3.getGlobalBounds().contains(mousePos)) { player->applyUpgrade(offeredUpgrades[2]); currentState = GameState::PLAYING; }
+            }
+        }
+    }
+}
+
+void Engine::resetGame() {
+    gameObjects.clear();
+
+    // Tworzymy od nowa gracza na środku ekranu
+    player = std::make_shared<Player>(640.f, 360.f);
     gameObjects.push_back(player);
 
+    // Resetujemy statystyki fali i czasu
     currentWave = 1;
-    timeBetweenWaves = 20.0f; // Nowa fala atakuje co 20 sekund
-    waveTimer = 20.0f;        // Ustawiamy na 20, żeby PIERWSZA fala zrespiła się od razu po starcie gry!
+    timeBetweenWaves = 20.0f;
+    waveTimer = 20.0f; // Od razu respi pierwszą falę
+    gameTime = 0.f;    // Resetujemy stoper i punkty
 
-    // --- LOSOWE GENEROWANIE PRZESZKÓD ---
+    // LOSOWE GENEROWANIE PRZESZKÓD
     for (int i = 0; i < 5; ++i) {
-        float randX = rand() % 1200 + 40; // Losowanie żeby nie wystawały poza ekran
+        float randX = rand() % 1200 + 40; // Żeby nie wystawały poza ekran
         float randY = rand() % 640 + 40;
         int randType = rand() % 3;
 
@@ -38,7 +250,7 @@ Engine::Engine() {
         gameObjects.push_back(std::make_shared<Obstacle>(randX, randY, type));
     }
 
-    // Losowe mikstury (zabezpieczone przed respieniem sie w terenie)
+    // LOSOWE MIKSTURY
     for (int i = 0; i < 3; ++i) {
         bool isColliding = true;
         std::shared_ptr<Bonus> newPotion;
@@ -56,79 +268,12 @@ Engine::Engine() {
             for (const auto& obj : gameObjects) {
                 if (newPotion->getBounds().intersects(obj->getBounds())) {
                     isColliding = true;
-                    break;              // Przerywamy pętlę i losujemy pozycję od nowa
+                    break; // Przerywamy pętlę i losujemy pozycję od nowa
                 }
             }
         }
-
-        // Gdy program wyjdzie z pętli while oznacza to że znalazł bezpieczne miejsce.
+        // Znalazło bezpieczne miejsce, dodajemy miksturę na mapę
         gameObjects.push_back(newPotion);
-    }
-    currentState = GameState::PLAYING;
-
-    // Tło trawy
-
-    if(grassTexture.loadFromFile("assets/map/background/floor/grass.png")) {
-        grassTexture.setRepeated(true);
-        grassTexture.setSmooth(false);
-
-        grassBackground.setTexture(grassTexture);
-        grassBackground.setTextureRect(sf::IntRect(0, 0, 640, 360));
-        grassBackground.setScale(2.f, 2.f);
-        grassBackground.setPosition(0.f, 0.f);
-    }
-
-    // Ładowanie czcionki i tworzenie kart ulepszeń
-    if(font.loadFromFile("assets/fonts/PixelGame.otf")) {
-        textTitle.setFont(font);
-        textTitle.setString("AWANS! WYBIERZ ULEPSZENIE");
-        textTitle.setCharacterSize(40);
-        textTitle.setFillColor(sf::Color::White);
-        textTitle.setPosition(350.f, 100.f);
-
-        card1.setSize(sf::Vector2f(250.f, 350.f)); card1.setPosition(200.f, 200.f);
-        textCard1.setFont(font); textCard1.setCharacterSize(24); textCard1.setPosition(220.f, 350.f);
-
-        card2.setSize(sf::Vector2f(250.f, 350.f)); card2.setPosition(500.f, 200.f);
-        textCard2.setFont(font); textCard2.setCharacterSize(24); textCard2.setPosition(520.f, 350.f);
-
-        card3.setSize(sf::Vector2f(250.f, 350.f)); card3.setPosition(800.f, 200.f);
-        textCard3.setFont(font); textCard3.setCharacterSize(24); textCard3.setPosition(820.f, 350.f);
-
-        hudStatsText.setFont(font);
-        hudStatsText.setCharacterSize(16);
-        hudStatsText.setFillColor(sf::Color(200, 200, 200));
-        hudStatsText.setPosition(20.f, 20.f);
-    }
-
-    // Debug
-    debugMode = false;
-}
-
-void Engine::handleEvents() {
-    sf::Event event;
-    while(window.pollEvent(event)) {
-        if(event.type == sf::Event::Closed) {
-            window.close();
-        }
-
-        if(event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Escape) {
-            window.close();
-        }
-
-        // Obsługa kliknięć w menu awansu
-        if (currentState == GameState::LEVEL_UP && event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left) {
-            sf::Vector2f mousePos = window.mapPixelToCoords(sf::Mouse::getPosition(window));
-
-            if (card1.getGlobalBounds().contains(mousePos)) { player->applyUpgrade(offeredUpgrades[0]); currentState = GameState::PLAYING; }
-            else if (card2.getGlobalBounds().contains(mousePos)) { player->applyUpgrade(offeredUpgrades[1]); currentState = GameState::PLAYING; }
-            else if (card3.getGlobalBounds().contains(mousePos)) { player->applyUpgrade(offeredUpgrades[2]); currentState = GameState::PLAYING; }
-        }
-
-        // Obsługa debug
-        if(event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::F3) {
-            debugMode = !debugMode;
-        }
     }
 }
 
@@ -349,11 +494,32 @@ void Engine::update(float deltaTime) {
         currentState = GameState::LEVEL_UP;
         player->acknowledgeLevelUp();
     }
+    // Sprawdzenie śmierci gracza
+    if (player->getHp() <= 0) {
+        currentState = GameState::GAME_OVER;
+        int score = static_cast<int>(gameTime * 10) + (player->getEnemiesKilled() * 2);
+        textFinalScore.setString("Twoj ostateczny wynik: " + std::to_string(score));
+
+        // Dynamiczne wyśrodkowanie nowego tekstu z punktacją
+        sf::FloatRect scoreBounds = textFinalScore.getLocalBounds();
+        textFinalScore.setOrigin(scoreBounds.left + scoreBounds.width / 2.f, scoreBounds.top + scoreBounds.height / 2.f);
+        textFinalScore.setPosition(640.f, 320.f);
+    }
 }
 
 void Engine::render() {
-    window.clear();
+    window.clear(sf::Color(30, 30, 40));
     window.draw(grassBackground);
+    if (currentState == GameState::MAIN_MENU) {
+        // RYSOWANIE MENU GŁÓWNEGO
+        window.draw(menuTitle);
+        window.draw(btnStart); window.draw(textStart);
+        window.draw(btnQuit); window.draw(textQuit);
+    }
+    else if (currentState == GameState::PLAYING || currentState == GameState::LEVEL_UP || currentState == GameState::GAME_OVER || currentState == GameState::PAUSED) {
+        // RYSOWANIE GRY (Dla stanów PLAYING, LEVEL_UP, GAME_OVER)
+        window.draw(grassBackground);
+
 
     // Rysowanie wszystkich obiektów
     for(auto& obj : gameObjects) {
@@ -362,20 +528,23 @@ void Engine::render() {
         }
     }
 
-    // Rysowanie ekranu ulepszeń nakładanego na grę
-    if (currentState == GameState::LEVEL_UP) {
-        sf::RectangleShape overlay(sf::Vector2f(1280.f, 720.f));
-        overlay.setFillColor(sf::Color(0, 0, 0, 200)); // Przyciemnienie tła
-        window.draw(overlay);
+    // 1. Aktualizacja i rysowanie paska XP na górze
+    float xpPercent = static_cast<float>(player->getXp()) / static_cast<float>(player->getMaxXp());
+    xpBarForeground.setSize(sf::Vector2f(1280.f * xpPercent, 15.f));
+    window.draw(xpBarBackground);
+    window.draw(xpBarForeground);
 
-        window.draw(card1); window.draw(textCard1);
-        window.draw(card2); window.draw(textCard2);
-        window.draw(card3); window.draw(textCard3);
-        window.draw(textTitle);
-    }
+    // 2. Formatowanie czasu, wyniku i statystyk w lewym górnym rogu
+    int minutes = static_cast<int>(gameTime) / 60;
+    int seconds = static_cast<int>(gameTime) % 60;
+    std::string timeStr = (minutes < 10 ? "0" : "") + std::to_string(minutes) + ":" + (seconds < 10 ? "0" : "") + std::to_string(seconds);
+    int score = static_cast<int>(gameTime * 10) + (player->getEnemiesKilled() * 2);
+
     //Rysowanie HUD
-    std::string statsStr = "POZIOM: " + std::to_string(player->getLevel()) +
-                           "\nFALA: " + std::to_string(currentWave) + " (Kolejna za: " + std::to_string((int)(timeBetweenWaves - waveTimer)) + "s)" +
+    std::string statsStr = "CZAS: " + timeStr +
+                           "\nWYNIK: " + std::to_string(score) +
+                           "\nPOZIOM: " + std::to_string(player->getLevel()) +
+                           "\nFALA: " + std::to_string(currentWave) + " (Kolejna za: " + std::to_string((int)(timeBetweenWaves - waveTimer)) + "S)" +
                            "\nZABICI: " + std::to_string(player->getEnemiesKilled()) +
                            "\nMIKSTURY: " + std::to_string(player->getPotionsCollected()) +
                            "\nPANCERZ: " + std::to_string(player->getArmor()) +
@@ -386,7 +555,11 @@ void Engine::render() {
                            "\nREGEN: " + std::to_string(player->getHpRegenRate()) + " HP/5s" +
                            "\nSZYBKOSC: " + std::to_string(static_cast<int>(player->getSpeed()));
     hudStatsText.setString(statsStr);
+    hudStatsText.setPosition(20.f, 25.f);
     window.draw(hudStatsText);
+
+    window.draw(xpBarBackground);
+    window.draw(xpBarForeground);
 
     // Rysowanie menu awansu
     if (currentState == GameState::LEVEL_UP) {
@@ -399,9 +572,29 @@ void Engine::render() {
         window.draw(card3); window.draw(textCard3);
         window.draw(textTitle);
     }
+    else if (currentState == GameState::GAME_OVER) {
+        sf::RectangleShape overlay(sf::Vector2f(1280.f, 720.f));
+        overlay.setFillColor(sf::Color(0, 0, 0, 220)); // Mocne przyciemnienie tła
+        window.draw(overlay);
+
+        // Rysowanie napisów ekranu śmierci
+        window.draw(textGameOver);
+        window.draw(textFinalScore);
+        window.draw(btnReturn); window.draw(textReturn);
+    }
+    // RYSOWANIE MENU PAUZY
+    else if (currentState == GameState::PAUSED) {
+        sf::RectangleShape overlay(sf::Vector2f(1280.f, 720.f));
+        overlay.setFillColor(sf::Color(0, 0, 0, 180));
+        window.draw(overlay);
+
+        window.draw(textPaused);
+        window.draw(btnResume); window.draw(textResume);
+        window.draw(btnPauseReturn); window.draw(textPauseReturn);
+    }
 
     if(debugMode) drawDebugOverlay();
-
+    }
     window.display();
 }
 
@@ -416,6 +609,7 @@ void Engine::run() {
             update(deltaTime);
 
             waveTimer += deltaTime;
+            gameTime += deltaTime; //Aktualizacja czasu gry
 
             // Kiedy minie czas, zrzucamy na gracza całą falę na raz
             if (waveTimer >= timeBetweenWaves) {
@@ -565,3 +759,4 @@ void Engine::drawDebugOverlay() {
     // Napis
     window.draw(debugLabel);
 }
+

@@ -53,6 +53,9 @@ private:
     sf::RectangleShape attackCooldownBarBackground;
     sf::RectangleShape attackCooldownBarForeground;
 
+    sf::RectangleShape specialCooldownBarBackground;
+    sf::RectangleShape specialCooldownBarForeground;
+
     // Unik
     float dashSpeed;
     float dashCooldown;
@@ -171,6 +174,12 @@ public:
 
     bool getHasOrbitingSword() const { return hasOrbitingSword; }
     sf::FloatRect getOrbitingSwordBounds() const { return orbitSwordShape.getGlobalBounds(); }
+    // XP
+    int getXp() const { return xp; }
+    int getMaxXp() const { return maxXp; }
+
+    int getHp() const { return hp; }
+
 
 };
 
