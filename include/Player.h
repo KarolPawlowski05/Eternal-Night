@@ -146,7 +146,7 @@ public:
     void applyUpgrade(int choice);
 
     // Funkcje systemu statystyk
-    int getDamage(int baseDamage) const;
+    int getDamage(int baseDamage, bool* wasCrit = nullptr) const;
     void incrementKills() { enemiesKilled++; }
     void incrementPotions() { potionsCollected++; }
     void triggerVampirism();

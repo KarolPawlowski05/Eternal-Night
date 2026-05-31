@@ -60,6 +60,15 @@ private:
     // Pasek XP na górze ekranu
     sf::RectangleShape xpBarBackground;
     sf::RectangleShape xpBarForeground;
+    sf::RectangleShape xpBarBorder;
+    sf::Text           xpLevelText;
+
+    // Timer
+    sf::Text timerText;
+
+    // Licznik zabitych
+    sf::Text killCountText;
+    sf::RectangleShape skullIcon; // Placeholder ikonki czaszki
 
     // Elementy UI Menu Głównego
     sf::Text menuTitle;
@@ -83,6 +92,8 @@ private:
 
     void resetGame();
 
+    // tworzenie DamageNumber
+    void spawnDamageNumber(float x, float y, int damage, bool isCrit);
 public:
     Engine();
     void run();

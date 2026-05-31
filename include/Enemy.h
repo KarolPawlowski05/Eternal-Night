@@ -36,7 +36,8 @@ public:
     void draw(sf::RenderWindow& window) override;
     sf::FloatRect getBounds() const override;
 
-    void takeDamage(int amount, int damageType = 0);
+    // Zwraca faktycznie zadane obrażenia (0 = zablokowane przez cooldown)
+    int takeDamage(int amount, int damageType = 0);
     int getXpReward() const; // Zwraca ilość XP do wypadnięcia
     void setPosition(sf::Vector2f newPos) { position = newPos; sprite.setPosition(position); }
     void heal(int amount) { hp += amount; if(hp > maxHp) hp = maxHp; }

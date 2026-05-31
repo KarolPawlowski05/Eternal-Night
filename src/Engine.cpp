@@ -5,6 +5,7 @@
 #include "Bonus.h"
 #include "Obstacle.h"
 #include "XpCrystal.h"
+#include "DamageNumber.h"
 #include <algorithm>
 #include <cstdlib>
 #include <memory>
@@ -18,17 +19,25 @@ Engine::Engine() {
     currentState = GameState::MAIN_MENU;
     gameTime = 0.f;
 
-    xpBarBackground.setSize(sf::Vector2f(1280.f, 15.f)); // Pasek na całą szerokość ekranu
-    xpBarBackground.setFillColor(sf::Color(30, 30, 30));
+    // Pasek XP
+    // Tło paska
+    xpBarBackground.setSize(sf::Vector2f(1280.f, 22.f)); // Pasek na całą szerokość ekranu
+    xpBarBackground.setFillColor(sf::Color(20, 20, 30));
     xpBarBackground.setPosition(0.f, 0.f);
 
-    xpBarForeground.setSize(sf::Vector2f(0.f, 15.f));
-    xpBarForeground.setFillColor(sf::Color(0, 150, 255)); // Błękitny kolor XP
+    // Wypełnienie XP
+    xpBarForeground.setSize(sf::Vector2f(0.f, 22.f));
+    xpBarForeground.setFillColor(sf::Color(30, 140, 255)); // Błękitny kolor XP
     xpBarForeground.setPosition(0.f, 0.f);
 
+    // Obwódka XP
+    xpBarBorder.setSize(sf::Vector2f(1280.f, 22.f));
+    xpBarBorder.setFillColor(sf::Color::Transparent);
+    xpBarBorder.setOutlineColor(sf::Color(180, 130, 30));
+    xpBarBorder.setOutlineThickness(2.f);
+    xpBarBorder.setPosition(0.f, 0.f);
 
     // Tło trawy
-
     if(grassTexture.loadFromFile("assets/map/background/floor/grass.png")) {
         grassTexture.setRepeated(true);
         grassTexture.setSmooth(false);
@@ -39,18 +48,52 @@ Engine::Engine() {
         grassBackground.setPosition(0.f, 0.f);
     }
 
-    // Ładowanie czcionki i konfiguracja całego interfejsu użytkownika (UI)
+    // Czcionka i UI
     if(font.loadFromFile("assets/fonts/PixelGame.otf")) {
-        sf::FloatRect textBounds;
+        sf::FloatRect tb;
 
-        // 1. EKRAN AWANSU (LEVEL UP) & HUD
+        // LVL na prawym końcu paska XP
+        xpLevelText.setFont(font);
+        xpLevelText.setCharacterSize(14);
+        xpLevelText.setFillColor(sf::Color::White);
+        xpLevelText.setString("LV 1"); // Pozycja ustalana w render()
+
+        // Timer pod paskiem
+        timerText.setFont(font);
+        timerText.setCharacterSize(28);
+        timerText.setFillColor(sf::Color(230, 230, 230));
+        timerText.setOutlineColor(sf::Color(0, 0, 0, 180));
+        timerText.setOutlineThickness(2.f);
+        timerText.setString("00:00"); // Pozycja ustalana w render()
+
+        // Licznik zabitych
+        killCountText.setFont(font);
+        killCountText.setCharacterSize(16);
+        killCountText.setFillColor(sf::Color(220, 200, 200));
+        killCountText.setOutlineColor(sf::Color::Black);
+        killCountText.setOutlineThickness(1.5f);
+        killCountText.setString("0");
+
+        // Placeholder czaszki
+        skullIcon.setSize(sf::Vector2f(14.f, 14.f));
+        skullIcon.setFillColor(sf::Color(200, 60, 60));
+        skullIcon.setOutlineColor(sf::Color(80, 0, 0));
+        skullIcon.setOutlineThickness(1.f); // Pozycja ustalana dynamicznie
+
+        // HUD statystyki
+        hudStatsText.setFont(font);
+        hudStatsText.setCharacterSize(14);
+        hudStatsText.setFillColor(sf::Color(190, 190, 190));
+        hudStatsText.setPosition(10.f, 58.f); // Pod timerem
+
+        // Ekran awansu
         textTitle.setFont(font);
-        textTitle.setString("AWANS! WYBIERZ ULEPSZENIE");
+        textTitle.setString("LEVEL UP! CHOOSE UPGRADE");
         textTitle.setCharacterSize(40);
         textTitle.setFillColor(sf::Color::White);
-        textBounds = textTitle.getLocalBounds();
-        textTitle.setOrigin(textBounds.left + textBounds.width / 2.f, textBounds.top + textBounds.height / 2.f);
-        textTitle.setPosition(640.f, 120.f); // Środek ekranu w poziomie
+        tb = textTitle.getLocalBounds();
+        textTitle.setOrigin(tb.left + tb.width / 2.f, tb.top + tb.height / 2.f);
+        textTitle.setPosition(640.f, 120.f);
 
         card1.setSize(sf::Vector2f(250.f, 350.f)); card1.setPosition(200.f, 200.f);
         textCard1.setFont(font); textCard1.setCharacterSize(24); textCard1.setPosition(220.f, 350.f);
@@ -61,18 +104,13 @@ Engine::Engine() {
         card3.setSize(sf::Vector2f(250.f, 350.f)); card3.setPosition(800.f, 200.f);
         textCard3.setFont(font); textCard3.setCharacterSize(24); textCard3.setPosition(820.f, 350.f);
 
-        hudStatsText.setFont(font);
-        hudStatsText.setCharacterSize(16);
-        hudStatsText.setFillColor(sf::Color(200, 200, 200));
-        hudStatsText.setPosition(20.f, 20.f);
-
-        // 2. MENU GŁÓWNE
+        // Menu główne
         menuTitle.setFont(font);
         menuTitle.setString("ETERNAL NIGHT");
         menuTitle.setCharacterSize(80);
         menuTitle.setFillColor(sf::Color(255, 200, 0));
-        textBounds = menuTitle.getLocalBounds();
-        menuTitle.setOrigin(textBounds.left + textBounds.width / 2.f, textBounds.top + textBounds.height / 2.f);
+        tb = menuTitle.getLocalBounds();
+        menuTitle.setOrigin(tb.left + tb.width / 2.f, tb.top + tb.height / 2.f);
         menuTitle.setPosition(640.f, 140.f);
 
         // Przycisk START
@@ -83,10 +121,10 @@ Engine::Engine() {
         textStart.setFont(font);
         textStart.setString("Start game");
         textStart.setCharacterSize(30);
-        textBounds = textStart.getLocalBounds();
-        textStart.setOrigin(textBounds.left + textBounds.width / 2.f, textBounds.top + textBounds.height / 2.f);
+        tb = textStart.getLocalBounds();
+        textStart.setOrigin(tb.left + tb.width / 2.f, tb.top + tb.height / 2.f);
         // Pozycja: środek przycisku
-        textStart.setPosition(490.f + 150.f, 300.f + 30.f);
+        textStart.setPosition(640.f, 330.f);
 
         // Przycisk QUIT
         btnQuit.setSize(sf::Vector2f(300.f, 60.f));
@@ -96,17 +134,17 @@ Engine::Engine() {
         textQuit.setFont(font);
         textQuit.setString("Quit");
         textQuit.setCharacterSize(30);
-        textBounds = textQuit.getLocalBounds();
-        textQuit.setOrigin(textBounds.left + textBounds.width / 2.f, textBounds.top + textBounds.height / 2.f);
-        textQuit.setPosition(490.f + 150.f, 400.f + 30.f);
+        tb = textQuit.getLocalBounds();
+        textQuit.setOrigin(tb.left + tb.width / 2.f, tb.top + tb.height / 2.f);
+        textQuit.setPosition(640.f, 430.f);
 
         // 3. MENU PAUZY
         textPaused.setFont(font);
-        textPaused.setString("PAUZA");
+        textPaused.setString("PAUSE");
         textPaused.setCharacterSize(80);
         textPaused.setFillColor(sf::Color::Yellow);
-        textBounds = textPaused.getLocalBounds();
-        textPaused.setOrigin(textBounds.left + textBounds.width / 2.f, textBounds.top + textBounds.height / 2.f);
+        tb = textPaused.getLocalBounds();
+        textPaused.setOrigin(tb.left + tb.width / 2.f, tb.top + tb.height / 2.f);
         textPaused.setPosition(640.f, 190.f);
 
         // Przycisk WZNÓW (RESUME)
@@ -115,11 +153,11 @@ Engine::Engine() {
         btnResume.setFillColor(sf::Color(50, 100, 50));
 
         textResume.setFont(font);
-        textResume.setString("Wznow gre");
+        textResume.setString("Resume game");
         textResume.setCharacterSize(30);
-        textBounds = textResume.getLocalBounds();
-        textResume.setOrigin(textBounds.left + textBounds.width / 2.f, textBounds.top + textBounds.height / 2.f);
-        textResume.setPosition(490.f + 150.f, 300.f + 30.f);
+        tb = textResume.getLocalBounds();
+        textResume.setOrigin(tb.left + tb.width / 2.f, tb.top + tb.height / 2.f);
+        textResume.setPosition(640.f, 330.f);
 
         // Przycisk POWRÓT Z PAUZY
         btnPauseReturn.setSize(sf::Vector2f(300.f, 60.f));
@@ -127,29 +165,24 @@ Engine::Engine() {
         btnPauseReturn.setFillColor(sf::Color(100, 50, 50));
 
         textPauseReturn.setFont(font);
-        textPauseReturn.setString("Wroc do menu");
+        textPauseReturn.setString("Back to menu");
         textPauseReturn.setCharacterSize(30);
-        textBounds = textPauseReturn.getLocalBounds();
-        textPauseReturn.setOrigin(textBounds.left + textBounds.width / 2.f, textBounds.top + textBounds.height / 2.f);
-        textPauseReturn.setPosition(490.f + 150.f, 400.f + 30.f);
+        tb = textPauseReturn.getLocalBounds();
+        textPauseReturn.setOrigin(tb.left + tb.width / 2.f, tb.top + tb.height / 2.f);
+        textPauseReturn.setPosition(640.f, 430.f);
 
-        // 4. EKRAN ŚMIERCI (GAME OVER)
-        // Napis ZGINĄŁEŚ! na środku ekranu
+        // Ekran śmierci
         textGameOver.setFont(font);
-        textGameOver.setString("ZGINALES!");
+        textGameOver.setString("You died");
         textGameOver.setCharacterSize(80);
         textGameOver.setFillColor(sf::Color::Red);
-        textBounds = textGameOver.getLocalBounds();
-        textGameOver.setOrigin(textBounds.left + textBounds.width / 2.f, textBounds.top + textBounds.height / 2.f);
+        tb = textGameOver.getLocalBounds();
+        textGameOver.setOrigin(tb.left + tb.width / 2.f, tb.top + tb.height / 2.f);
         textGameOver.setPosition(640.f, 190.f);
 
         // Wynik ostateczny na środku ekranu
         textFinalScore.setFont(font);
         textFinalScore.setCharacterSize(40);
-        // Wyśrodkowanie dla textFinalScore zrobimy dynamicznie w update(),
-        // ale ustawiamy mu bazowy punkt origin na środek
-        textBounds = textFinalScore.getLocalBounds();
-        textFinalScore.setOrigin(textBounds.left + textBounds.width / 2.f, textBounds.top + textBounds.height / 2.f);
         textFinalScore.setPosition(640.f, 320.f);
 
         // Przycisk POWRÓT DO MENU
@@ -158,11 +191,11 @@ Engine::Engine() {
         btnReturn.setFillColor(sf::Color(80, 80, 80));
 
         textReturn.setFont(font);
-        textReturn.setString("Powrot do menu");
+        textReturn.setString("Back to menu");
         textReturn.setCharacterSize(30);
-        textBounds = textReturn.getLocalBounds();
-        textReturn.setOrigin(textBounds.left + textBounds.width / 2.f, textBounds.top + textBounds.height / 2.f);
-        textReturn.setPosition(490.f + 150.f, 450.f + 30.f);
+        tb = textReturn.getLocalBounds();
+        textReturn.setOrigin(tb.left + tb.width / 2.f, tb.top + tb.height / 2.f);
+        textReturn.setPosition(640.f, 430.f);
     }
 
     // Debug
@@ -277,6 +310,14 @@ void Engine::resetGame() {
     }
 }
 
+// Tworzenie unoszących się obrażeń
+void Engine::spawnDamageNumber(float x, float y, int damage, bool isCrit) {
+    if(damage <= 0) return;
+    // Drobne losowe przesunięcie poziome żeby liuczby sie nie nakładały
+    float offsetX = static_cast<float>((rand() % 30) - 15);
+    gameObjects.push_back(std::make_shared<DamageNumber>(x + offsetX, y - 20.f, damage, isCrit, font));
+}
+
 void Engine::update(float deltaTime) {
     // Przekazanie pozycji kursora
     sf::Vector2f mousePos = window.mapPixelToCoords(sf::Mouse::getPosition(window));
@@ -299,6 +340,7 @@ void Engine::update(float deltaTime) {
     }
 
     std::vector<std::shared_ptr<GameObject>> newObjects;
+
     // System kolizji
     for(auto& obj : gameObjects) {
         if(!obj->isActive()) continue;
@@ -321,7 +363,10 @@ void Engine::update(float deltaTime) {
 
             // Kolizja: Atak obszarowy gracza - Wróg
             if(player->getIsAttacking() && player->getAttackBounds().intersects(enemy->getBounds())) {
-                enemy->takeDamage(player->getDamage(25));
+                bool wasCrit = false;
+                int dmg = player->getDamage(25, &wasCrit);
+                int dealt = enemy->takeDamage(dmg);
+                if(dealt > 0) spawnDamageNumber(enemy->getPosition().x, enemy->getPosition().y, dealt, wasCrit);
 
                 if(!enemy->isActive()) {
                     player->incrementKills();
@@ -329,6 +374,7 @@ void Engine::update(float deltaTime) {
                     newObjects.push_back(std::make_shared<XpCrystal>(enemy->getPosition().x, enemy->getPosition().y, enemy->getXpReward()));
                 }
             }
+
             // Kolizja: Aura Ognia (Pasywna)
             if (player->getHasFireAura()) {
                 float dx = enemy->getPosition().x - player->getPosition().x;
@@ -336,7 +382,10 @@ void Engine::update(float deltaTime) {
                 float dist = std::sqrt(dx * dx + dy * dy);
 
                 if (dist <= player->getFireAuraRadius()) {
-                    enemy->takeDamage(player->getDamage(3), 1);
+                    bool wasCrit = false;
+                    int dmg = player->getDamage(3, &wasCrit);
+                    int dealt = enemy->takeDamage(dmg, 1);
+                    if(dealt > 0) spawnDamageNumber(enemy->getPosition().x, enemy->getPosition().y, dealt, wasCrit);
 
                     if(!enemy->isActive()) {
                         player->incrementKills();
@@ -349,7 +398,10 @@ void Engine::update(float deltaTime) {
             // Kolizja: Orbitujące Ostrze (Pasywna)
             if (player->getHasOrbitingSword()) {
                 if (player->getOrbitingSwordBounds().intersects(enemy->getBounds())) {
-                    enemy->takeDamage(player->getDamage(15), 2);
+                    bool wasCrit = false;
+                    int dmg = player->getDamage(15, &wasCrit);
+                    int dealt = enemy->takeDamage(dmg, 2);
+                    if(dealt > 0) spawnDamageNumber(enemy->getPosition().x, enemy->getPosition().y, dealt, wasCrit);
 
                     if(!enemy->isActive()) {
                         player->incrementKills();
@@ -366,7 +418,10 @@ void Engine::update(float deltaTime) {
                 auto projectile = dynamic_cast<Projectile*>(otherObj.get());
                 if(projectile) {
                     if(projectile->getBounds().intersects(enemy->getBounds())) {
-                        enemy->takeDamage(player->getDamage(50));
+                        bool wasCrit = false;
+                        int dmg = player->getDamage(50, &wasCrit);
+                        int dealt = enemy->takeDamage(dmg);
+                        if(dealt > 0) spawnDamageNumber(enemy->getPosition().x, enemy->getPosition().y, dealt, wasCrit);
 
                         if(!enemy->isActive()) {
                             player->incrementKills();
@@ -405,12 +460,24 @@ void Engine::update(float deltaTime) {
         }
     }
 
-        // Kolizje z XP
+        // Kryształy XP
         auto xp = dynamic_cast<XpCrystal*>(obj.get());
         if(xp) {
-            if(player->getPickupBounds().intersects(xp->getBounds())) {
-                player->addXp(10); // Dodanie XP
-                xp->destroy();
+            if(!xp->isHoming() && player->getPickupBounds().intersects(xp->getBounds())) {
+                xp->startHoming();
+            }
+            if(xp->isHoming()) {
+                // Aktualizacja celu co klatkę
+                xp->setTargetPos(player->getPosition());
+
+                // Kryształ znika gdy jest blisko środka gracza
+                float dx = xp->getPosition().x - player->getPosition().x;
+                float dy = xp->getPosition().y - player->getPosition().y;
+                float dist = std::sqrt(dx * dx + dy * dy);
+                if(dist < 18.f) {
+                    player->addXp(xp->getXpValue());
+                    xp->destroy();
+                }
             }
         }
 
@@ -509,9 +576,10 @@ void Engine::update(float deltaTime) {
 
 void Engine::render() {
     window.clear(sf::Color(30, 30, 40));
-    window.draw(grassBackground);
+
     if (currentState == GameState::MAIN_MENU) {
         // RYSOWANIE MENU GŁÓWNEGO
+        window.draw(grassBackground);
         window.draw(menuTitle);
         window.draw(btnStart); window.draw(textStart);
         window.draw(btnQuit); window.draw(textQuit);
@@ -528,34 +596,57 @@ void Engine::render() {
         }
     }
 
-    // 1. Aktualizacja i rysowanie paska XP na górze
+    // Pasek XP
     float xpPercent = static_cast<float>(player->getXp()) / static_cast<float>(player->getMaxXp());
-    xpBarForeground.setSize(sf::Vector2f(1280.f * xpPercent, 15.f));
+    xpBarForeground.setSize(sf::Vector2f(1280.f * xpPercent, 22.f));
+
     window.draw(xpBarBackground);
     window.draw(xpBarForeground);
+    window.draw(xpBarBorder);
 
-    // 2. Formatowanie czasu, wyniku i statystyk w lewym górnym rogu
+    // "Lv X"
+    xpLevelText.setString("LV " + std::to_string(player->getLevel()));
+    sf::FloatRect lvBounds = xpLevelText.getLocalBounds();
+    xpLevelText.setOrigin(lvBounds.left + lvBounds.width, lvBounds.top + lvBounds.height / 2.f);
+    xpLevelText.setPosition(1272.f, 11.f); // Prawa strona, środek paska
+    window.draw(xpLevelText);
+
+    // Timer
     int minutes = static_cast<int>(gameTime) / 60;
     int seconds = static_cast<int>(gameTime) % 60;
     std::string timeStr = (minutes < 10 ? "0" : "") + std::to_string(minutes) + ":" + (seconds < 10 ? "0" : "") + std::to_string(seconds);
+    timerText.setString(timeStr);
+    sf::FloatRect timeBounds = timerText.getLocalBounds();
+    timerText.setOrigin(timeBounds.left + timeBounds.width / 2.f, timeBounds.top);
+    timerText.setPosition(640.f, 26.f); // Wyśrodkowany pod paskiem XP
+    window.draw(timerText);
+
+    // Licznik zabitych
+    killCountText.setString(std::to_string(player->getEnemiesKilled()));
+    sf::FloatRect killBounds = killCountText.getLocalBounds();
+    // Tekst z liczbą, po prawej ikonka czaszki
+    float killTextX = 1240.f - killBounds.width - 20.f;
+    killCountText.setPosition(killTextX, 27.f);
+    window.draw(killCountText);
+
+    // Czaszka
+    skullIcon.setPosition(killTextX + killBounds.width + 4.f, 29.f);
+    window.draw(skullIcon);
+
+    // Statystyki gracza
     int score = static_cast<int>(gameTime * 10) + (player->getEnemiesKilled() * 2);
 
     //Rysowanie HUD
-    std::string statsStr = "CZAS: " + timeStr +
-                           "\nWYNIK: " + std::to_string(score) +
-                           "\nPOZIOM: " + std::to_string(player->getLevel()) +
-                           "\nFALA: " + std::to_string(currentWave) + " (Kolejna za: " + std::to_string((int)(timeBetweenWaves - waveTimer)) + "S)" +
-                           "\nZABICI: " + std::to_string(player->getEnemiesKilled()) +
-                           "\nMIKSTURY: " + std::to_string(player->getPotionsCollected()) +
-                           "\nPANCERZ: " + std::to_string(player->getArmor()) +
-                           "\nBONUS DMG: +" + std::to_string(player->getDamageBonus()) +
-                           "\nKRYTYK: " + std::to_string(static_cast<int>(player->getCritChance() * 100)) + "%" +
-                           "\nWAMPIRYZM: " + std::to_string(static_cast<int>(player->getVampirismChance() * 100)) + "%" +
-                           "\nUNIK: " + std::to_string(static_cast<int>(player->getDodgeChance() * 100)) + "%" +
+    std::string statsStr = "SCORE: " + std::to_string(score) +
+                           "\nWAVE: " + std::to_string(currentWave) + " (+" + std::to_string((int)(timeBetweenWaves - waveTimer)) + "s)" +
+                           "\nARMOR: " + std::to_string(player->getArmor()) +
+                           "\nDMG+: +" + std::to_string(player->getDamageBonus()) +
+                           "\nCRIT: " + std::to_string(static_cast<int>(player->getCritChance() * 100)) + "%" +
+                           "\nVAMPIRE: " + std::to_string(static_cast<int>(player->getVampirismChance() * 100)) + "%" +
+                           "\nDODGE: " + std::to_string(static_cast<int>(player->getDodgeChance() * 100)) + "%" +
                            "\nREGEN: " + std::to_string(player->getHpRegenRate()) + " HP/5s" +
-                           "\nSZYBKOSC: " + std::to_string(static_cast<int>(player->getSpeed()));
+                           "\nSPEED: " + std::to_string(static_cast<int>(player->getSpeed()));
     hudStatsText.setString(statsStr);
-    hudStatsText.setPosition(20.f, 25.f);
     window.draw(hudStatsText);
 
     window.draw(xpBarBackground);

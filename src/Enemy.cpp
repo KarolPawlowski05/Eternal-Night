@@ -66,7 +66,7 @@ Enemy::Enemy(float x, float y, EnemyType type, std::shared_ptr<Player> player, f
     hpBarForeground.setOrigin(20.f, 2.5f);
 }
 
-void Enemy::takeDamage(int amount, int damageType) {
+int Enemy::takeDamage(int amount, int damageType) {
     bool tookDamage = false;
 
     if (damageType == 1) { // Typ 1: Aura Ognia
@@ -92,7 +92,9 @@ void Enemy::takeDamage(int amount, int damageType) {
     if (tookDamage) {
         sprite.setFillColor(sf::Color::Red);
         if (hp <= 0) destroy();
+        return amount;
     }
+    return 0; // Zablokowane przez cooldown
 }
 
 int Enemy::getXpReward() const {

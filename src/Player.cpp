@@ -434,9 +434,10 @@ void Player::heal(int amount) {
     }
 }
 
-int Player::getDamage(int baseDamage) const {
+int Player::getDamage(int baseDamage, bool* wasCrit) const {
     // Losowanie szansy na krytyk
     bool isCrit = (static_cast<float>(rand() % 100) / 100.f) < critChance;
+    if(wasCrit) *wasCrit = isCrit;
     int finalDamage = baseDamage + damageBonus;
     return isCrit ? (finalDamage * 2) : finalDamage;
 }
