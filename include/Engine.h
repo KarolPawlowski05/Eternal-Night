@@ -6,7 +6,7 @@
 #include <memory>
 #include "GameObject.h"
 
-enum class GameState { MAIN_MENU, PLAYING, LEVEL_UP, GAME_OVER, PAUSED };
+enum class GameState { MAIN_MENU, PLAYING, LEVEL_UP, GAME_OVER, PAUSED, SCORES };
 class Player;
 
 class Engine {
@@ -90,10 +90,36 @@ private:
     sf::RectangleShape btnPauseReturn;
     sf::Text textPauseReturn;
 
+    //Kamera podążająca za graczem
+    sf::View gameView;
+
+    // System nieskończonej mapy
+    sf::Vector2f lastObstacleSpawnPos;
+    void manageInfiniteMap();
+    void drawTerrain();
+    int getTileType(int tileX, int tileY);
+
     void resetGame();
 
     // tworzenie DamageNumber
     void spawnDamageNumber(float x, float y, int damage, bool isCrit);
+
+    // Ekran wyników
+    sf::Text textScoresTitle;
+    sf::RectangleShape btnScores;
+    sf::Text textBtnScores;
+    sf::Text textScoresList;
+    sf::RectangleShape btnReturnFromScores;
+    sf::Text textReturnFromScores;
+
+    // Wpisywanie imienia na Game Over
+    sf::Text textEnterName;
+    sf::Text textNameInput;
+    std::string playerName;
+    bool nameSaved;
+
+    void saveScore(const std::string& name, int score);
+    std::string loadScores();
 public:
     Engine();
     void run();

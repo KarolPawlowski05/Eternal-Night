@@ -86,6 +86,11 @@ private:
     float fireAuraRadius;
 
     bool hasOrbitingSword;
+    bool hasWand;
+    float wandCooldown;
+    float wandTimer;
+    int wandProjectiles;
+    int wandDamageBonus;
     sf::Texture orbitSwordTexture;
     sf::Sprite orbitSwordShape;
     float orbitAngle;
@@ -139,7 +144,7 @@ public:
     void acknowledgeLevelUp() {
         xp -= maxXp;
         level++;
-        maxXp = static_cast<int>(maxXp * 1.15f);
+        maxXp = static_cast<int>(maxXp * 1.30f);
     }
 
     // Funkcja nakładająca wybrane ulepszenie
@@ -179,6 +184,15 @@ public:
     int getMaxXp() const { return maxXp; }
 
     int getHp() const { return hp; }
+    //Gettery do różdżki
+    bool getHasWand() const { return hasWand; }
+    float getWandCooldown() const { return wandCooldown; }
+    float getWandTimer() const { return wandTimer; }
+    void tickWandTimer(float dt) { wandTimer += dt; }
+    bool wandReady() const { return hasWand && wandTimer >= wandCooldown; }
+    void resetWandTimer() { wandTimer = 0.f; }
+    int getWandProjectiles() const { return wandProjectiles; }
+    int getWandDamageBonus() const { return wandDamageBonus; }
 
 
 };

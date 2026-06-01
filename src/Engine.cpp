@@ -10,6 +10,8 @@
 #include <cstdlib>
 #include <memory>
 #include <cmath>
+#include <fstream>
+#include <ctime>
 
 Engine::Engine() {
     // Rozmiar okna
@@ -39,13 +41,8 @@ Engine::Engine() {
 
     // Tło trawy
     if(grassTexture.loadFromFile("assets/map/background/floor/grass.png")) {
-        grassTexture.setRepeated(true);
-        grassTexture.setSmooth(false);
-
         grassBackground.setTexture(grassTexture);
-        grassBackground.setTextureRect(sf::IntRect(0, 0, 640, 360));
         grassBackground.setScale(2.f, 2.f);
-        grassBackground.setPosition(0.f, 0.f);
     }
 
     // Czcionka i UI
@@ -193,9 +190,65 @@ Engine::Engine() {
         textReturn.setFont(font);
         textReturn.setString("Back to menu");
         textReturn.setCharacterSize(30);
-        tb = textReturn.getLocalBounds();
-        textReturn.setOrigin(tb.left + tb.width / 2.f, tb.top + tb.height / 2.f);
-        textReturn.setPosition(640.f, 430.f);
+
+        sf::FloatRect returnBounds = textReturn.getLocalBounds();
+        textReturn.setOrigin(returnBounds.left + returnBounds.width / 2.f, returnBounds.top + returnBounds.height / 2.f);
+        textReturn.setPosition(640.f, 480.f);
+
+
+        // Przycisk TOP 10 w menu
+        btnScores.setSize(sf::Vector2f(300.f, 60.f));
+        btnScores.setPosition(490.f, 500.f);
+        btnScores.setFillColor(sf::Color(30, 80, 30));
+
+        textBtnScores.setFont(font);
+        textBtnScores.setString("Top 10");
+        textBtnScores.setCharacterSize(30);
+        tb = textBtnScores.getLocalBounds();
+        textBtnScores.setOrigin(tb.left + tb.width / 2.f, tb.top + tb.height / 2.f);
+        textBtnScores.setPosition(640.f, 530.f);
+
+        // Ekran wyników
+        textScoresTitle.setFont(font);
+        textScoresTitle.setString("TOP 10 SCORES");
+        textScoresTitle.setCharacterSize(50);
+        textScoresTitle.setFillColor(sf::Color(255, 200, 0));
+        tb = textScoresTitle.getLocalBounds();
+        textScoresTitle.setOrigin(tb.left + tb.width / 2.f, tb.top + tb.height / 2.f);
+        textScoresTitle.setPosition(640.f, 80.f);
+
+        textScoresList.setFont(font);
+        textScoresList.setCharacterSize(22);
+        textScoresList.setFillColor(sf::Color::White);
+        textScoresList.setPosition(300.f, 160.f);
+
+        btnReturnFromScores.setSize(sf::Vector2f(300.f, 60.f));
+        btnReturnFromScores.setPosition(490.f, 600.f);
+        btnReturnFromScores.setFillColor(sf::Color(80, 80, 80));
+
+        textReturnFromScores.setFont(font);
+        textReturnFromScores.setString("Return to menu");
+        textReturnFromScores.setCharacterSize(30);
+        tb = textReturnFromScores.getLocalBounds();
+        textReturnFromScores.setOrigin(tb.left + tb.width / 2.f, tb.top + tb.height / 2.f);
+        textReturnFromScores.setPosition(640.f, 630.f);
+
+        // Wpisywanie imienia
+        textEnterName.setFont(font);
+        textEnterName.setString("Enter your name:");
+        textEnterName.setCharacterSize(28);
+        textEnterName.setFillColor(sf::Color::White);
+        tb = textEnterName.getLocalBounds();
+        textEnterName.setOrigin(tb.left + tb.width / 2.f, tb.top + tb.height / 2.f);
+        textEnterName.setPosition(640.f, 400.f);
+
+        textNameInput.setFont(font);
+        textNameInput.setCharacterSize(32);
+        textNameInput.setFillColor(sf::Color(255, 200, 0));
+        textNameInput.setPosition(640.f, 440.f);
+
+        playerName = "";
+        nameSaved = false;
     }
 
     // Debug
@@ -224,7 +277,7 @@ void Engine::handleEvents() {
         }
         // OBSŁUGA MYSZKI W ZALEŻNOŚCI OD EKRANU
         if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left) {
-            sf::Vector2f mousePos = window.mapPixelToCoords(sf::Mouse::getPosition(window));
+            sf::Vector2f mousePos = window.mapPixelToCoords(sf::Mouse::getPosition(window),window.getDefaultView());
 
             if (currentState == GameState::MAIN_MENU) {
                 if (btnStart.getGlobalBounds().contains(mousePos)) {
@@ -232,7 +285,12 @@ void Engine::handleEvents() {
                     currentState = GameState::PLAYING;
                 } else if (btnQuit.getGlobalBounds().contains(mousePos)) {
                     window.close();
+                } else if (btnScores.getGlobalBounds().contains(mousePos)) {
+                    textScoresList.setString(loadScores());
+                    currentState = GameState::SCORES;
                 }
+
+
             }
             // OBSŁUGA KLIKNIĘĆ W MENU PAUZY
             else if (currentState == GameState::PAUSED) {
@@ -245,12 +303,43 @@ void Engine::handleEvents() {
             else if (currentState == GameState::GAME_OVER) {
                 if (btnReturn.getGlobalBounds().contains(mousePos)) {
                     currentState = GameState::MAIN_MENU; // Wracamy do menu startowego
+                    playerName = "";
+                    nameSaved = false;
                 }
             }
             else if (currentState == GameState::LEVEL_UP) {
                 if (card1.getGlobalBounds().contains(mousePos)) { player->applyUpgrade(offeredUpgrades[0]); currentState = GameState::PLAYING; }
                 else if (card2.getGlobalBounds().contains(mousePos)) { player->applyUpgrade(offeredUpgrades[1]); currentState = GameState::PLAYING; }
                 else if (card3.getGlobalBounds().contains(mousePos)) { player->applyUpgrade(offeredUpgrades[2]); currentState = GameState::PLAYING; }
+            }
+        }
+        // Wpisywanie imienia na Game Over
+        if (currentState == GameState::GAME_OVER && !nameSaved) {
+            if (event.type == sf::Event::TextEntered) {
+                if (event.text.unicode == 8 && !playerName.empty()) {
+                    // Backspace
+                    playerName.pop_back();
+                } else if (event.text.unicode >= 32 && event.text.unicode < 128 && playerName.size() < 16) {
+                    playerName += static_cast<char>(event.text.unicode);
+                }
+                textNameInput.setString(playerName + "_");
+                sf::FloatRect nb = textNameInput.getLocalBounds();
+                textNameInput.setOrigin(nb.left + nb.width / 2.f, nb.top + nb.height / 2.f);
+            }
+            if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Enter && !playerName.empty()) {
+                int score = static_cast<int>(gameTime * 10) + (player->getEnemiesKilled() * 2);
+                saveScore(playerName, score);
+                nameSaved = true;
+            }
+        }
+
+        // Obsługa ekranu wyników
+        if (currentState == GameState::SCORES) {
+            if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left) {
+                sf::Vector2f mousePos = window.mapPixelToCoords(sf::Mouse::getPosition(window), window.getDefaultView());
+                if (btnReturnFromScores.getGlobalBounds().contains(mousePos)) {
+                    currentState = GameState::MAIN_MENU;
+                }
             }
         }
     }
@@ -262,6 +351,7 @@ void Engine::resetGame() {
     // Tworzymy od nowa gracza na środku ekranu
     player = std::make_shared<Player>(640.f, 360.f);
     gameObjects.push_back(player);
+    lastObstacleSpawnPos = player->getPosition();
 
     // Resetujemy statystyki fali i czasu
     currentWave = 1;
@@ -270,9 +360,9 @@ void Engine::resetGame() {
     gameTime = 0.f;    // Resetujemy stoper i punkty
 
     // LOSOWE GENEROWANIE PRZESZKÓD
-    for (int i = 0; i < 5; ++i) {
-        float randX = rand() % 1200 + 40; // Żeby nie wystawały poza ekran
-        float randY = rand() % 640 + 40;
+    for (int i = 0; i < 25; ++i) {
+        float randX = player->getPosition().x + (rand() % 2400) - 1200;
+        float randY = player->getPosition().y + (rand() % 2400) - 1200;
         int randType = rand() % 3;
 
         ObstacleType type;
@@ -290,9 +380,8 @@ void Engine::resetGame() {
 
         // Pętla będzie losować tak długo aż znajdzie wolne miejsce
         while (isColliding) {
-            float randX = rand() % 1200 + 40;
-            float randY = rand() % 640 + 40;
-
+            float randX = (rand() % 4000) - 2000 + 640;
+            float randY = (rand() % 4000) - 2000 + 360;
             // Tworzymy testową miksturę na wylosowanych kordach
             newPotion = std::make_shared<Bonus>(randX, randY, BonusType::POTION);
 
@@ -319,20 +408,60 @@ void Engine::spawnDamageNumber(float x, float y, int damage, bool isCrit) {
 }
 
 void Engine::update(float deltaTime) {
-    // Przekazanie pozycji kursora
-    sf::Vector2f mousePos = window.mapPixelToCoords(sf::Mouse::getPosition(window));
+    sf::Vector2f mousePos = window.mapPixelToCoords(sf::Mouse::getPosition(window), gameView);
     player->setMousePosition(mousePos);
 
-    // Tworzenie pocisku
     if(player->getWantsToShootSpecial()) {
         sf::Vector2f spawnPos = player->getPosition();
         sf::Vector2f dir = player->getLastDirection();
-
         gameObjects.push_back(std::make_shared<Projectile>(spawnPos.x, spawnPos.y, dir));
-
         player->resetSpecialShot();
     }
-    // Aktualizacja wszystkich obiektów w grze
+    // Różdżka - samonaprowadzająca
+    if (player->wandReady()) {
+        // Znajdź najbliższego wroga
+        float closestDist = 99999.f;
+        Enemy* closestEnemy = nullptr;
+        for (auto& obj : gameObjects) {
+            if (!obj->isActive()) continue;
+            auto e = dynamic_cast<Enemy*>(obj.get());
+            if (e) {
+                float dx = e->getPosition().x - player->getPosition().x;
+                float dy = e->getPosition().y - player->getPosition().y;
+                float dist = std::sqrt(dx*dx + dy*dy);
+                if (dist < closestDist) {
+                    closestDist = dist;
+                    closestEnemy = e;
+                }
+            }
+        }
+
+        if (closestEnemy && closestDist < 600.f) {
+            int count = player->getWandProjectiles();
+            for (int i = 0; i < count; i++) {
+                // Lekkie losowe rozproszenie dla wielu pocisków
+                float spreadAngle = (count > 1) ? (i - (count-1)/2.f) * 15.f : 0.f;
+                float rad = spreadAngle * 3.14159f / 180.f;
+                sf::Vector2f dir = closestEnemy->getPosition() - player->getPosition();
+                float len = std::sqrt(dir.x*dir.x + dir.y*dir.y);
+                if (len > 0) dir /= len;
+                // Obróć wektor o spreadAngle
+                sf::Vector2f rotDir(
+                    dir.x * std::cos(rad) - dir.y * std::sin(rad),
+                    dir.x * std::sin(rad) + dir.y * std::cos(rad)
+                    );
+                auto proj = std::make_shared<Projectile>(
+                    player->getPosition().x, player->getPosition().y,
+                    rotDir, 350.f, false, true
+                    );
+                proj->setHomingTarget(closestEnemy->getPosition());
+                gameObjects.push_back(proj);
+            }
+            player->resetWandTimer();
+        }
+    }
+    player->tickWandTimer(deltaTime);
+
     for(auto& obj : gameObjects) {
         if(obj->isActive()) {
             obj->update(deltaTime);
@@ -341,33 +470,43 @@ void Engine::update(float deltaTime) {
 
     std::vector<std::shared_ptr<GameObject>> newObjects;
 
-    // System kolizji
     for(auto& obj : gameObjects) {
         if(!obj->isActive()) continue;
 
-        // Rzutowanie obiektu na wroga
+        // POCISKI
+        auto proj = dynamic_cast<Projectile*>(obj.get());
+        if(proj) {
+            if(proj->getIsEnemyOwned()) {
+                if(proj->getBounds().intersects(player->getBounds())) {
+                    player->takeDamage(15);
+                    proj->destroy();
+                }
+            }
+            continue;
+        }
+
+        // WROGOWIE
         auto enemy = dynamic_cast<Enemy*>(obj.get());
         if(enemy) {
-            // Kolizja: Gracz - Wróg
+            // Gracz - Wróg
             if(player->getBounds().intersects(enemy->getBounds())) {
-                if (enemy->getIsKamikaze()) {
+                if(enemy->getIsKamikaze()) {
                     player->takeDamage(30);
                     enemy->takeDamage(9999);
                 } else {
                     player->takeDamage(10);
-                    if (enemy->getIsVampire()) {
-                        enemy->heal(15);
+                    if(enemy->getIsVampire()) {
+                        enemy->heal(5);
                     }
                 }
             }
 
-            // Kolizja: Atak obszarowy gracza - Wróg
+            // Atak obszarowy
             if(player->getIsAttacking() && player->getAttackBounds().intersects(enemy->getBounds())) {
                 bool wasCrit = false;
                 int dmg = player->getDamage(25, &wasCrit);
                 int dealt = enemy->takeDamage(dmg);
                 if(dealt > 0) spawnDamageNumber(enemy->getPosition().x, enemy->getPosition().y, dealt, wasCrit);
-
                 if(!enemy->isActive()) {
                     player->incrementKills();
                     player->triggerVampirism();
@@ -375,18 +514,16 @@ void Engine::update(float deltaTime) {
                 }
             }
 
-            // Kolizja: Aura Ognia (Pasywna)
-            if (player->getHasFireAura()) {
+            // Aura Ognia
+            if(player->getHasFireAura()) {
                 float dx = enemy->getPosition().x - player->getPosition().x;
                 float dy = enemy->getPosition().y - player->getPosition().y;
                 float dist = std::sqrt(dx * dx + dy * dy);
-
-                if (dist <= player->getFireAuraRadius()) {
+                if(dist <= player->getFireAuraRadius()) {
                     bool wasCrit = false;
                     int dmg = player->getDamage(3, &wasCrit);
                     int dealt = enemy->takeDamage(dmg, 1);
                     if(dealt > 0) spawnDamageNumber(enemy->getPosition().x, enemy->getPosition().y, dealt, wasCrit);
-
                     if(!enemy->isActive()) {
                         player->incrementKills();
                         player->triggerVampirism();
@@ -395,14 +532,13 @@ void Engine::update(float deltaTime) {
                 }
             }
 
-            // Kolizja: Orbitujące Ostrze (Pasywna)
-            if (player->getHasOrbitingSword()) {
-                if (player->getOrbitingSwordBounds().intersects(enemy->getBounds())) {
+            // Orbitujące Ostrze
+            if(player->getHasOrbitingSword()) {
+                if(player->getOrbitingSwordBounds().intersects(enemy->getBounds())) {
                     bool wasCrit = false;
                     int dmg = player->getDamage(15, &wasCrit);
                     int dealt = enemy->takeDamage(dmg, 2);
                     if(dealt > 0) spawnDamageNumber(enemy->getPosition().x, enemy->getPosition().y, dealt, wasCrit);
-
                     if(!enemy->isActive()) {
                         player->incrementKills();
                         player->triggerVampirism();
@@ -411,66 +547,68 @@ void Engine::update(float deltaTime) {
                 }
             }
 
-            // Kolizja: Kusza - Wróg
+            // Kusza - Wróg
             for(auto& otherObj : gameObjects) {
                 if(!otherObj->isActive()) continue;
-
                 auto projectile = dynamic_cast<Projectile*>(otherObj.get());
-                if(projectile) {
+                if(projectile && !projectile->getIsEnemyOwned()) {
                     if(projectile->getBounds().intersects(enemy->getBounds())) {
                         bool wasCrit = false;
-                        int dmg = player->getDamage(50, &wasCrit);
+                        int baseDmg = projectile->getIsWand() ? (35 + player->getWandDamageBonus()) : 50;
+                        int dmg = player->getDamage(baseDmg, &wasCrit);
                         int dealt = enemy->takeDamage(dmg);
                         if(dealt > 0) spawnDamageNumber(enemy->getPosition().x, enemy->getPosition().y, dealt, wasCrit);
-
                         if(!enemy->isActive()) {
                             player->incrementKills();
                             player->triggerVampirism();
                             newObjects.push_back(std::make_shared<XpCrystal>(enemy->getPosition().x, enemy->getPosition().y, enemy->getXpReward()));
                         }
-
                         projectile->destroy();
                     }
                 }
             }
-            //KOLIZJA WRÓG - WRÓG:
-        if (!enemy->getIsGhost()) {
-            for(auto& otherObj : gameObjects) {
-                if(!otherObj->isActive() || obj == otherObj) continue;
 
-                auto otherEnemy = dynamic_cast<Enemy*>(otherObj.get());
-                if(otherEnemy) {
-                    sf::FloatRect intersection;
-
-                    if(enemy->getBounds().intersects(otherEnemy->getBounds(), intersection)) {
-                        sf::Vector2f pos = enemy->getPosition();
-
-                        if(intersection.width < intersection.height) {
-                            if(enemy->getBounds().left < otherEnemy->getBounds().left) pos.x -= intersection.width / 2.f;
-                            else pos.x += intersection.width / 2.f;
-                        } else {
-                            if(enemy->getBounds().top < otherEnemy->getBounds().top) pos.y -= intersection.height / 2.f;
-                            else pos.y += intersection.height / 2.f;
+            // Wróg - Wróg
+            if(!enemy->getIsGhost()) {
+                for(auto& otherObj : gameObjects) {
+                    if(!otherObj->isActive() || obj == otherObj) continue;
+                    auto otherEnemy = dynamic_cast<Enemy*>(otherObj.get());
+                    if(otherEnemy) {
+                        sf::FloatRect intersection;
+                        if(enemy->getBounds().intersects(otherEnemy->getBounds(), intersection)) {
+                            sf::Vector2f pos = enemy->getPosition();
+                            if(intersection.width < intersection.height) {
+                                if(enemy->getBounds().left < otherEnemy->getBounds().left) pos.x -= intersection.width / 2.f;
+                                else pos.x += intersection.width / 2.f;
+                            } else {
+                                if(enemy->getBounds().top < otherEnemy->getBounds().top) pos.y -= intersection.height / 2.f;
+                                else pos.y += intersection.height / 2.f;
+                            }
+                            enemy->setPosition(pos);
                         }
-
-                        enemy->setPosition(pos);
                     }
                 }
             }
-        }
-    }
 
-        // Kryształy XP
+            // Rzut Głazem
+            if(enemy->checkAndResetThrow()) {
+                sf::Vector2f dir = player->getPosition() - enemy->getPosition();
+                float length = std::hypot(dir.x, dir.y);
+                if(length > 0 && length < 500.f){
+                dir /= length;
+                newObjects.push_back(std::make_shared<Projectile>(enemy->getPosition().x, enemy->getPosition().y, dir, 200.0f, true));
+                }
+            }
+        } // koniec if(enemy)
+
+        // KRYSZTAŁY XP
         auto xp = dynamic_cast<XpCrystal*>(obj.get());
         if(xp) {
             if(!xp->isHoming() && player->getPickupBounds().intersects(xp->getBounds())) {
                 xp->startHoming();
             }
             if(xp->isHoming()) {
-                // Aktualizacja celu co klatkę
                 xp->setTargetPos(player->getPosition());
-
-                // Kryształ znika gdy jest blisko środka gracza
                 float dx = xp->getPosition().x - player->getPosition().x;
                 float dy = xp->getPosition().y - player->getPosition().y;
                 float dist = std::sqrt(dx * dx + dy * dy);
@@ -481,53 +619,45 @@ void Engine::update(float deltaTime) {
             }
         }
 
-        // Kolizje z Bonusem
+        // BONUSY
         auto bonus = dynamic_cast<Bonus*>(obj.get());
         if(bonus) {
             if(player->getPickupBounds().intersects(bonus->getBounds())) {
-                // Sprawdzamy czy podniesiony bonus to mikstura
                 if(bonus->getType() == BonusType::POTION) {
                     player->heal(20);
                     player->incrementPotions();
                 }
-
-                bonus->destroy(); // Zebranie bonusu
+                bonus->destroy();
             }
         }
 
-        //Kolizje z Przeszkodą
+        // PRZESZKODY
         auto obstacle = dynamic_cast<Obstacle*>(obj.get());
         if(obstacle) {
             sf::FloatRect obsBounds = obstacle->getBounds();
-            sf::FloatRect intersection; // Zmienna przechowująca pole nałożenia się obiektów
+            sf::FloatRect intersection;
 
-            // Kolizja: Gracz - Przeszkoda
+            // Gracz - Przeszkoda
             if(player->getBounds().intersects(obsBounds, intersection)) {
                 sf::Vector2f newPos = player->getPosition();
-
-                // Sprawdzamy, z której strony wypchnąć gracza (tam gdzie głębokość wejścia w obiekt jest mniejsza)
                 if(intersection.width < intersection.height) {
-                    // Wypychanie w poziomie
                     if(player->getBounds().left < obsBounds.left) newPos.x -= intersection.width;
                     else newPos.x += intersection.width;
                 } else {
-                    // Wypychanie w pionie
                     if(player->getBounds().top < obsBounds.top) newPos.y -= intersection.height;
                     else newPos.y += intersection.height;
                 }
-                player->setPosition(newPos); // Fizyczne wypchnięcie gracza
+                player->setPosition(newPos);
             }
 
-            // Kolizja: Wróg - Przeszkoda
+            // Wróg - Przeszkoda
             for(auto& otherObj : gameObjects) {
                 if(!otherObj->isActive()) continue;
                 auto otherEnemy = dynamic_cast<Enemy*>(otherObj.get());
-                if(otherEnemy) {
-                    if (!otherEnemy->getIsGhost()) {
+                if(otherEnemy && !otherEnemy->getIsGhost()) {
                     sf::FloatRect enemyIntersection;
                     if(otherEnemy->getBounds().intersects(obsBounds, enemyIntersection)) {
                         sf::Vector2f newEnemyPos = otherEnemy->getPosition();
-
                         if(enemyIntersection.width < enemyIntersection.height) {
                             if(otherEnemy->getBounds().left < obsBounds.left) newEnemyPos.x -= enemyIntersection.width;
                             else newEnemyPos.x += enemyIntersection.width;
@@ -535,58 +665,71 @@ void Engine::update(float deltaTime) {
                             if(otherEnemy->getBounds().top < obsBounds.top) newEnemyPos.y -= enemyIntersection.height;
                             else newEnemyPos.y += enemyIntersection.height;
                         }
-                        otherEnemy->setPosition(newEnemyPos); // Fizyczne wypchnięcie wroga
+                        otherEnemy->setPosition(newEnemyPos);
                     }
                 }
             }
-        }
-    }
-}
+        } // koniec if(obstacle)
 
-    // Przesypujemy nowe kryształy do głównej listy gry
+        } // koniec for(obj)
+
     for(auto& newObj : newObjects) {
         gameObjects.push_back(newObj);
     }
 
-    // Usuwanie nieaktywnych obiektów
     gameObjects.erase(
         std::remove_if(gameObjects.begin(), gameObjects.end(),
-            [](const std::shared_ptr<GameObject>& obj) { return !obj->isActive(); }),
+                       [](const std::shared_ptr<GameObject>& obj) { return !obj->isActive(); }),
         gameObjects.end()
-    );
+        );
 
-    // Sprawdzenie czy gracz awansował
     if(player->checkLevelUp()) {
         generateUpgrades();
         currentState = GameState::LEVEL_UP;
         player->acknowledgeLevelUp();
     }
-    // Sprawdzenie śmierci gracza
-    if (player->getHp() <= 0) {
+
+    if(player->getHp() <= 0) {
         currentState = GameState::GAME_OVER;
         int score = static_cast<int>(gameTime * 10) + (player->getEnemiesKilled() * 2);
         textFinalScore.setString("Twoj ostateczny wynik: " + std::to_string(score));
-
-        // Dynamiczne wyśrodkowanie nowego tekstu z punktacją
         sf::FloatRect scoreBounds = textFinalScore.getLocalBounds();
         textFinalScore.setOrigin(scoreBounds.left + scoreBounds.width / 2.f, scoreBounds.top + scoreBounds.height / 2.f);
         textFinalScore.setPosition(640.f, 320.f);
     }
+
+    manageInfiniteMap();
 }
 
 void Engine::render() {
     window.clear(sf::Color(30, 30, 40));
 
     if (currentState == GameState::MAIN_MENU) {
-        // RYSOWANIE MENU GŁÓWNEGO
-        window.draw(grassBackground);
+        // Ustawienie tymczasowej kamery tylko dla menu
+        gameView.setSize(1280.f, 720.f);
+        gameView.setCenter(640.f, 360.f);
+        window.setView(gameView);
+
+        drawTerrain();
+        // Wracamy do widoku interfejsu żeby napisy nie były zniekształcone
+        window.setView(window.getDefaultView());
+        //  Rysowanie przycisków i tytułów
         window.draw(menuTitle);
         window.draw(btnStart); window.draw(textStart);
         window.draw(btnQuit); window.draw(textQuit);
+        window.draw(btnScores);
+        window.draw(textBtnScores);
+
     }
     else if (currentState == GameState::PLAYING || currentState == GameState::LEVEL_UP || currentState == GameState::GAME_OVER || currentState == GameState::PAUSED) {
+
+        //  KAMERA ŚWIATA (Podąża za graczem)
+        gameView.setSize(1280.f, 720.f);
+        gameView.setCenter(player->getPosition());
+        window.setView(gameView);
+
         // RYSOWANIE GRY (Dla stanów PLAYING, LEVEL_UP, GAME_OVER)
-        window.draw(grassBackground);
+        drawTerrain();
 
 
     // Rysowanie wszystkich obiektów
@@ -595,6 +738,13 @@ void Engine::render() {
             obj->draw(window);
         }
     }
+
+    // Rysowanie hitboxów musi odbywać się w świecie gry
+    if(debugMode) drawDebugOverlay();
+
+
+    // 2. KAMERA INTERFEJSU
+    window.setView(window.getDefaultView());
 
     // Pasek XP
     float xpPercent = static_cast<float>(player->getXp()) / static_cast<float>(player->getMaxXp());
@@ -672,6 +822,20 @@ void Engine::render() {
         window.draw(textGameOver);
         window.draw(textFinalScore);
         window.draw(btnReturn); window.draw(textReturn);
+        if (!nameSaved) {
+            window.draw(textEnterName);
+            window.draw(textNameInput);
+        } else {
+            sf::Text savedMsg;
+            savedMsg.setFont(font);
+            savedMsg.setString("Score saved!");
+            savedMsg.setCharacterSize(24);
+            savedMsg.setFillColor(sf::Color(0, 255, 0));
+            sf::FloatRect sb = savedMsg.getLocalBounds();
+            savedMsg.setOrigin(sb.left + sb.width / 2.f, sb.top + sb.height / 2.f);
+            savedMsg.setPosition(640.f, 410.f);
+            window.draw(savedMsg);
+        }
     }
     // RYSOWANIE MENU PAUZY
     else if (currentState == GameState::PAUSED) {
@@ -684,7 +848,19 @@ void Engine::render() {
         window.draw(btnPauseReturn); window.draw(textPauseReturn);
     }
 
-    if(debugMode) drawDebugOverlay();
+  }
+    if (currentState == GameState::SCORES) {
+        window.clear(sf::Color(30, 30, 40));
+        sf::RectangleShape panel(sf::Vector2f(760.f, 500.f));
+        panel.setFillColor(sf::Color(40, 50, 70));
+        panel.setOutlineColor(sf::Color(180, 130, 30));
+        panel.setOutlineThickness(2.f);
+        panel.setPosition(260.f, 50.f);
+        window.draw(panel);
+        window.draw(textScoresTitle);
+        window.draw(textScoresList);
+        window.draw(btnReturnFromScores);
+        window.draw(textReturnFromScores);
     }
     window.display();
 }
@@ -715,15 +891,15 @@ void Engine::run() {
 }
 
 void Engine::spawnWave() {
-    int enemiesToSpawn = 5 + (currentWave * 2);
+    int enemiesToSpawn = 8 + (currentWave * 2);
 
     // Mnożniki
-    float hpM = 1.0f + (currentWave * 0.08f);
-    float speedM = 1.0f + (currentWave * 0.03f);
+    float hpM = 1.0f + (currentWave * 0.15f);
+    float speedM = 1.0f + (currentWave * 0.04f);
 
     //Pozycja startowa to gracz a promień to odległość poza ekranem
     sf::Vector2f center = player->getPosition();
-    float radius = 800.f;
+    float radius = 700.f;
 
     //Spawnowanie całej grupy
     for(int i = 0; i < enemiesToSpawn; ++i) {
@@ -760,7 +936,7 @@ void Engine::spawnWave() {
 void Engine::generateUpgrades() {
     std::vector<int> selected;
     while(selected.size() < 3) {
-        int r = rand() % 13;
+        int r = rand() % 14;
         if(std::find(selected.begin(), selected.end(), r) == selected.end()) {
             selected.push_back(r);
         }
@@ -785,6 +961,7 @@ void Engine::generateUpgrades() {
         case 10: text = L"Regeneracja\n+1 HP co\n5 sekund"; color = sf::Color(50, 150, 50); break;
         case 11: text = L"Aura Ognia\n(Odblokuj / Powiększ)"; color = sf::Color(200, 80, 0); break;
         case 12: text = L"Orbitujące Ostrze\n(Odblokuj / Przyspiesz)"; color = sf::Color(0, 150, 200); break;
+        case 13: text = L"Różdżka\n(Odblokuj / Ulepsz)"; color = sf::Color(120, 0, 200); break;
         }
 
         if(i == 0) { textCard1.setString(text); card1.setFillColor(color); }
@@ -847,7 +1024,162 @@ void Engine::drawDebugOverlay() {
         drawDebugRect(player->getOrbitingSwordBounds(), sf::Color(0, 255, 220));
     }
 
+    // Hitbox aury ognia
+    if(player->getHasFireAura()) {
+        drawDebugCircle(player->getPosition(), player->getFireAuraRadius(), sf::Color(255, 100, 0));
+    }
+
     // Napis
     window.draw(debugLabel);
 }
 
+
+void Engine::manageInfiniteMap() {
+    sf::Vector2f playerPos = player->getPosition();
+
+    // 1. USUWANIE STARYCH OBIEKTÓW (Ochrona przed wyciekiem pamięci)
+    for (auto& obj : gameObjects) {
+        if (!obj->isActive()) continue;
+
+        if (dynamic_cast<Obstacle*>(obj.get()) || dynamic_cast<XpCrystal*>(obj.get()) ||
+            dynamic_cast<Bonus*>(obj.get()) || dynamic_cast<Enemy*>(obj.get()) ||
+            dynamic_cast<Projectile*>(obj.get())) {
+
+            float dx = obj->getPosition().x - playerPos.x;
+            float dy = obj->getPosition().y - playerPos.y;
+            float distanceSq = dx * dx + dy * dy;
+
+            if (distanceSq > 2500.f * 2500.f) {
+                obj->destroy();
+            }
+        }
+    }
+
+    // GENEROWANIE NOWYCH PRZESZKÓD PRZED GRACZEM
+    float distMoved = std::hypot(playerPos.x - lastObstacleSpawnPos.x, playerPos.y - lastObstacleSpawnPos.y);
+
+    // Zespawnuj nową linię drzew za każdym razem, gdy gracz przejdzie 350 pikseli
+    if (distMoved > 350.f) {
+        lastObstacleSpawnPos = playerPos;
+
+        int obstaclesToSpawn = rand() % 4 + 2; // Losowo od 2 do 5 nowych obiektów
+        for (int i = 0; i < obstaclesToSpawn; ++i) {
+            // Generujemy na okręgu wokół gracza
+            float angle = (rand() % 360) * 3.14159f / 180.f;
+            float radius = 1300.f + (rand() % 300);
+
+            float spawnX = playerPos.x + cos(angle) * radius;
+            float spawnY = playerPos.y + sin(angle) * radius;
+
+            ObstacleType type;
+            int randType = rand() % 3;
+            if (randType == 0) type = ObstacleType::TREE;
+            else if (randType == 1) type = ObstacleType::BUSH;
+            else type = ObstacleType::ROCK;
+
+            gameObjects.push_back(std::make_shared<Obstacle>(spawnX, spawnY, type));
+        }
+    }
+}
+
+// Ta funkcja decyduje jaki kafelek ma leżeć na danych kordach (X, Y)
+int Engine::getTileType(int tileX, int tileY) {
+    int hash = tileX * 374761393 + tileY * 668265263;
+    hash = (hash ^ (hash >> 13)) * 1274126177;
+    return std::abs(hash) % 100;
+}
+
+// Ta funkcja rysuje tylko te kafelki które widać na ekranie
+void Engine::drawTerrain() {
+    float tileSize = 64.f;
+
+    sf::Vector2f center = gameView.getCenter();
+    sf::Vector2f size = gameView.getSize();
+
+    //  Obliczamy krawędzie ekranu (i dodajemy +1/-1 kafelka marginesu żeby nie znikały na rogach)
+    int leftTile   = static_cast<int>((center.x - size.x / 2.f) / tileSize) - 1;
+    int rightTile  = static_cast<int>((center.x + size.x / 2.f) / tileSize) + 1;
+    int topTile    = static_cast<int>((center.y - size.y / 2.f) / tileSize) - 1;
+    int bottomTile = static_cast<int>((center.y + size.y / 2.f) / tileSize) + 1;
+
+    //  Rysujemy siatkę widoczną tylko w kamerze
+    for (int x = leftTile; x <= rightTile; ++x) {
+        for (int y = topTile; y <= bottomTile; ++y) {
+
+            int type = getTileType(x, y);
+
+            // USTAWIANIE POZYCJI KAFELKA
+            grassBackground.setPosition(x * tileSize, y * tileSize);
+
+            grassBackground.setColor(sf::Color::White);
+            window.draw(grassBackground);
+
+            window.draw(grassBackground);
+        }
+    }
+}
+
+void Engine::saveScore(const std::string& name, int score) {
+    // Tworzenie folderu jeśli nie istnieje (działa na Windows)
+    system("if not exist assets\\scores mkdir assets\\scores");
+
+    // Wczytaj istniejące wyniki
+    std::vector<std::pair<int, std::string>> scores;
+    std::ifstream inFile("assets/scores/scores.txt");
+    if (inFile.is_open()) {
+        std::string line;
+        while (std::getline(inFile, line)) {
+            scores.push_back({0, line}); // przechowujemy surową linię
+        }
+        inFile.close();
+    }
+
+    // Pobierz aktualną datę
+    time_t t = time(nullptr);
+    char dateStr[11];
+    strftime(dateStr, sizeof(dateStr), "%Y-%m-%d", localtime(&t));
+
+    // Dopisz nowy wynik jako linię: SCORE|NAME|DATE
+    std::ofstream outFile("assets/scores/scores.txt", std::ios::app);
+    if (outFile.is_open()) {
+        outFile << score << "|" << name << "|" << dateStr << "\n";
+        outFile.close();
+    }
+}
+
+std::string Engine::loadScores() {
+    std::vector<std::tuple<int, std::string, std::string>> scores;
+
+    std::ifstream inFile("assets/scores/scores.txt");
+    if (inFile.is_open()) {
+        std::string line;
+        while (std::getline(inFile, line)) {
+            size_t p1 = line.find('|');
+            size_t p2 = line.rfind('|');
+            if (p1 != std::string::npos && p2 != std::string::npos && p1 != p2) {
+                int sc = std::stoi(line.substr(0, p1));
+                std::string nm = line.substr(p1 + 1, p2 - p1 - 1);
+                std::string dt = line.substr(p2 + 1);
+                scores.push_back({sc, nm, dt});
+            }
+        }
+        inFile.close();
+    }
+
+    // Sortuj malejąco po wyniku
+    std::sort(scores.begin(), scores.end(), [](const auto& a, const auto& b) {
+        return std::get<0>(a) > std::get<0>(b);
+    });
+
+    // Zbuduj string do wyświetlenia
+    std::string result = "";
+    int count = std::min((int)scores.size(), 10);
+    for (int i = 0; i < count; i++) {
+        result += std::to_string(i + 1) + ".  " +
+                  std::get<1>(scores[i]) + "     " +
+                  std::to_string(std::get<0>(scores[i])) + "     " +
+                  std::get<2>(scores[i]) + "\n\n";
+    }
+    if (result.empty()) result = "No scores yet!";
+    return result;
+}

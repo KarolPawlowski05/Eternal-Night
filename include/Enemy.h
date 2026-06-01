@@ -24,10 +24,14 @@ private:
     sf::RectangleShape hpBarBackground; // Czarne tło paska HP
     sf::RectangleShape hpBarForeground; // Czerwony pasek HP
     float baseSpeed;
-    float abilityTimer;
+    float abilityTimer = 0.f;
     bool isKamikaze;
     bool isGhost;
     bool isVampire;
+
+    bool isFaded = false;
+    bool isBatForm = false;
+    bool readyToThrow = false;
 public:
     Enemy(float x, float y, EnemyType type, std::shared_ptr<Player> player, float hpMult = 1.0f, float speedMult = 1.0f);
 
@@ -44,6 +48,10 @@ public:
     bool getIsKamikaze() const { return isKamikaze; }
     bool getIsGhost() const { return isGhost; }
     bool getIsVampire() const { return isVampire; }
+
+    // Gettery potrzebne dla silnika
+    bool getIsFaded() const { return isFaded; }
+    bool checkAndResetThrow() { if(readyToThrow) { readyToThrow = false; return true; } return false; }
 };
 
 #endif

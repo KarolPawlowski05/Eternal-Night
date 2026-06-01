@@ -1,23 +1,52 @@
 #include "Projectile.h"
 
-Projectile::Projectile(float startX, float startY, sf::Vector2f direction) : GameObject(startX, startY), speed(1000.f) {
+Projectile::Projectile(float startX, float startY, sf::Vector2f direction, float customSpeed, bool enemy, bool wand) : GameObject(startX, startY), speed(customSpeed), isEnemyOwned(enemy), isWand(wand){
 
     velocity = direction * speed;
 
-    if(arrowTexture.loadFromFile("assets/player/attacks/crossbow/arrow.png")) {
-        arrowSprite.setTexture(arrowTexture);
-        sf::FloatRect tb = arrowSprite.getLocalBounds();
-        arrowSprite.setOrigin(tb.width / 2.f, tb.height / 2.f);
-    } else {
-        // Error – biały prostokąt w rozmiarze strzałki (20x5)
-        arrowTexture.create(20, 5);
+    if (isEnemyOwned) {
+        // GŁAZ OGRA: Zamiast szukać tekstury strzały, generujemy brązowy "kamień"
+        arrowTexture.create(16, 16);
         sf::Image img;
-        img.create(20, 5, sf::Color::White);
+        img.create(16, 16, sf::Color(139, 69, 19)); // Brązowy kolor
         arrowTexture.loadFromImage(img);
         arrowSprite.setTexture(arrowTexture);
-        arrowSprite.setOrigin(10.f, 2.5f);
+        arrowSprite.setOrigin(8.f, 8.f);
     }
-
+    else{
+        // STRZAŁA Z KUSZY GRACZA (Twój oryginalny kod)
+        if(arrowTexture.loadFromFile("assets/player/attacks/crossbow/arrow.png")) {
+            arrowSprite.setTexture(arrowTexture);
+            sf::FloatRect tb = arrowSprite.getLocalBounds();
+            arrowSprite.setOrigin(tb.width / 2.f, tb.height / 2.f);
+        } else {
+            // Error – biały prostokąt w rozmiarze strzałki (20x5)
+            arrowTexture.create(20, 5);
+            sf::Image img;
+            img.create(20, 5, sf::Color::White);
+            arrowTexture.loadFromImage(img);
+            arrowSprite.setTexture(arrowTexture);
+            arrowSprite.setOrigin(10.f, 2.5f);
+        }
+    }
+    if (isWand) {
+        arrowTexture.create(12, 12);
+        sf::Image img;
+        img.create(12, 12, sf::Color(0, 0, 0, 0)); // przezroczyste tło
+        // Rysujemy kółko fioletowe ręcznie
+        for (int px = 0; px < 12; px++) {
+            for (int py = 0; py < 12; py++) {
+                float dx = px - 5.5f;
+                float dy = py - 5.5f;
+                if (dx*dx + dy*dy <= 25.f) {
+                    img.setPixel(px, py, sf::Color(180, 0, 255, 255));
+                }
+            }
+        }
+        arrowTexture.loadFromImage(img);
+        arrowSprite.setTexture(arrowTexture);
+        arrowSprite.setOrigin(6.f, 6.f);
+    }
     arrowSprite.setPosition(position);
 
     // Ustawienie rotacji pocisku zgodnie z kierunkiem lotu
@@ -28,12 +57,34 @@ Projectile::Projectile(float startX, float startY, sf::Vector2f direction) : Gam
 void Projectile::update(float deltaTime) {
     // Lot pocisku
     position += velocity * deltaTime;
+    if (isWand && hasTarget) {
+        // Skręcanie w stronę celu
+        sf::Vector2f dir = homingTarget - position;
+        float len = std::sqrt(dir.x * dir.x + dir.y * dir.y);
+        if (len > 5.f) {
+            dir /= len;
+            // Płynne skręcanie  mieszamy aktualny kierunek z docelowym
+            sf::Vector2f currentDir = velocity / speed;
+            currentDir = currentDir * 0.85f + dir * 0.15f;
+            float newLen = std::sqrt(currentDir.x * currentDir.x + currentDir.y * currentDir.y);
+            if (newLen > 0.f) currentDir /= newLen;
+            velocity = currentDir * speed;
+        }
+        // Znikaj jeśli dotarłeś do celu
+        if (len < 15.f) destroy();
+    }
+
+    // Różdżka też znika po dystansie
+    if (isWand) {
+        distanceTraveled += speed * deltaTime;
+        if (distanceTraveled > 1000.f) destroy();
+    }
+    if (isEnemyOwned) {
+        distanceTraveled += speed * deltaTime;
+        if (distanceTraveled > 800.f) destroy();
+    }
     arrowSprite.setPosition(position);
 
-    // Niszczenie pocisku, gdy wyleci poza okno
-    if(position.x < -50.f || position.x > 1330.f || position.y < -50.f || position.y > 770.f) {
-        destroy();
-    }
 }
 
 void Projectile::draw(sf::RenderWindow& window) {

@@ -13,8 +13,8 @@ Player::Player(float x, float y)
     lastDirection(0.f, -1.f),
     attackSize(80.f, 60.f), attackCooldown(0.7f), attackTimer(0.f), attackDuration(0.3f), durationTimer(0.f), isAttacking(false), specialCooldown(5.0f), specialTimer(10.0f), wantsToShootSpecial(false),
     dashSpeed(650.f), dashCooldown(2.0f), dashTimer(2.0f), dashDuration(0.25f), dashDurationTimer(0.f), isDashing(false),
-    xp(0), maxXp(20), level(1),
-    damageBonus(0), armor(0), critChance(0.05f), enemiesKilled(0), potionsCollected(0), vampirismChance(0.0f), pickupRadiusBonus(0.f), dodgeChance(0.0f), hpRegenRate(0), hpRegenTimer(0.f)
+    xp(0), maxXp(40), level(1),
+    damageBonus(0), armor(0), critChance(0.05f), enemiesKilled(0), potionsCollected(0), vampirismChance(0.0f), pickupRadiusBonus(0.f), dodgeChance(0.0f), hpRegenRate(0), hpRegenTimer(0.f), hasWand(false), wandCooldown(3.0f), wandTimer(3.0f), wandProjectiles(1), wandDamageBonus(0)
 {
     loadTextures();
 
@@ -330,11 +330,6 @@ void Player::update(float deltaTime) {
     // Animacja
     updateAnimation(movement, isMoving, deltaTime);
 
-    // Blokada wychodzenia poza okno
-    if(position.x < 20.f) position.x = 20.f;
-    if(position.x > 1260.f) position.x = 1260.f;
-    if(position.y < 20.f) position.y = 20.f;
-    if(position.y > 700.f) position.y = 700.f;
 
     sprite.setPosition(position);
 
@@ -425,7 +420,16 @@ void Player::applyUpgrade(int choice) {
         if (!hasOrbitingSword) { hasOrbitingSword = true; }
         else { orbitSpeed += 80.f; } // Miecz lata coraz szybciej
         break;
+    case 13: // RÓŻDŻKA
+        if (!hasWand) { hasWand = true; }
+        else {
+            wandCooldown *= 0.85f;      // -15% cooldown
+            wandProjectiles += 1;       // +1 pocisk
+            wandDamageBonus += 3;       // +3 dmg
+        }
+        break;
     }
+
 }
 void Player::heal(int amount) {
     hp += amount;
