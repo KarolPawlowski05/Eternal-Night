@@ -1,82 +1,69 @@
 #include "Player.h"
+#include "Config.h"
+#include <algorithm>
 
 // Konstruktor
 Player::Player(float x, float y)
-    : GameObject(x, y),
-    // Animacja ruchu
-    currentFrame(0), frameTimer(0.f), frameSpeed(0.1f), animState(AnimState::IDLE), animDir(AnimDir::DOWN), texturesLoaded(false),
-    // Animacja ataku
-    attackAnimFrame(0), attackAnimTimer(0.f), showAttackAnim(false), attackCombo(0),
-    // Inne
-    hp(100), maxHp(100), invincibilityTimer(0.f),
-    speed(250.f),
-    lastDirection(0.f, -1.f),
-    attackSize(80.f, 60.f), attackCooldown(0.7f), attackTimer(0.f), attackDuration(0.3f), durationTimer(0.f), isAttacking(false), specialCooldown(5.0f), specialTimer(10.0f), wantsToShootSpecial(false),
-    dashSpeed(650.f), dashCooldown(2.0f), dashTimer(2.0f), dashDuration(0.25f), dashDurationTimer(0.f), isDashing(false),
-    xp(0), maxXp(40), level(1),
-    damageBonus(0), armor(0), critChance(0.05f), enemiesKilled(0), potionsCollected(0), vampirismChance(0.0f), pickupRadiusBonus(0.f), dodgeChance(0.0f), hpRegenRate(0), hpRegenTimer(0.f), hasWand(false), wandCooldown(3.0f), wandTimer(3.0f), wandProjectiles(1), wandDamageBonus(0)
-{
+    : GameObject(x, y), animation(), combat(), movement(), health(),
+    progression(), stats(), weapons() {
+
     loadTextures();
 
     // Sprite gracza
-    sprite.setOrigin(FRAME_W / 2.f, FRAME_H / 2.f);
-    sprite.setPosition(position);
-    sprite.setTextureRect(sf::IntRect(0, 0, FRAME_W, FRAME_H));
+    animation.sprite.setOrigin(PlayerConfig::FRAME_WIDTH / 2.f, PlayerConfig::FRAME_HEIGHT / 2.f);
+    animation.sprite.setPosition(position);
+    animation.sprite.setTextureRect(sf::IntRect(0, 0, PlayerConfig::FRAME_WIDTH, PlayerConfig::FRAME_HEIGHT));
 
     // Sprite ataku
-    attackSprite.setOrigin(FRAME_W / 2.f, FRAME_H / 2.f);
-    sprite.setPosition(position);
-    sprite.setTextureRect(sf::IntRect(0, 0, FRAME_W, FRAME_H));
+    animation.attackSprite.setOrigin(PlayerConfig::FRAME_WIDTH / 2.f, PlayerConfig::FRAME_HEIGHT / 2.f);
+    animation.attackSprite.setPosition(position);
+    animation.attackSprite.setTextureRect(sf::IntRect(0, 0, PlayerConfig::FRAME_WIDTH, PlayerConfig::FRAME_HEIGHT));
 
     // Konfiguracja paska HP
-    hpBarBackground.setSize(sf::Vector2f(50.f, 6.f));
-    hpBarBackground.setFillColor(sf::Color::Black);
-    hpBarBackground.setOrigin(25.f, 3.f);
+    health.hpBarBackground.setSize(sf::Vector2f(50.f, 6.f));
+    health.hpBarBackground.setFillColor(sf::Color::Black);
+    health.hpBarBackground.setOrigin(25.f, 3.f);
 
-    hpBarForeground.setSize(sf::Vector2f(50.f, 6.f));
-    hpBarForeground.setFillColor(sf::Color::Green);
-    hpBarForeground.setOrigin(25.f, 3.f);
+    health.hpBarForeground.setSize(sf::Vector2f(50.f, 6.f));
+    health.hpBarForeground.setFillColor(sf::Color::Green);
+    health.hpBarForeground.setOrigin(25.f, 3.f);
 
     // Konfiguracja paska cooldownu ataku
-    attackCooldownBarBackground.setSize(sf::Vector2f(50.f, 4.f));
-    attackCooldownBarBackground.setFillColor(sf::Color(50, 50, 0));
-    attackCooldownBarBackground.setOrigin(25.f, 2.f);
+    health.attackCooldownBarBackground.setSize(sf::Vector2f(50.f, 4.f));
+    health.attackCooldownBarBackground.setFillColor(sf::Color(50, 50, 0));
+    health.attackCooldownBarBackground.setOrigin(25.f, 2.f);
 
-    attackCooldownBarForeground.setSize(sf::Vector2f(50.f, 4.f));
-    attackCooldownBarForeground.setFillColor(sf::Color::Yellow);
-    attackCooldownBarForeground.setOrigin(25.f, 2.f);
-
-    // Konfiguracja wskaźnika ataku (pomocniczy hitbox)
-    attackIndicator.setSize(attackSize);
-    attackIndicator.setOrigin(0.f, attackSize.y / 2.f);
-    attackIndicator.setFillColor(sf::Color(255, 0, 0, 0));
-
-    // Konfiguracja Aury Ognia
-    hasFireAura = false;
-    fireAuraRadius = 100.f;
-    fireAuraShape.setRadius(fireAuraRadius);
-    fireAuraShape.setOrigin(fireAuraRadius, fireAuraRadius);
-    fireAuraShape.setFillColor(sf::Color(255, 80, 0, 70));
-
-    // Konfiguracja Orbitującego Ostrza
-    hasOrbitingSword = false;
-    orbitAngle = 0.f;
-    orbitSpeed = 200.f; // 200 stopni na sekundę
-    if(orbitSwordTexture.loadFromFile("assets/player/attacks/orbitingSword/sword.png")) {
-        orbitSwordTexture.setSmooth(false);
-        orbitSwordShape.setTexture(orbitSwordTexture);
-        sf::FloatRect lb = orbitSwordShape.getLocalBounds();
-        orbitSwordShape.setOrigin(lb.width / 2.f, lb.height / 2.f);
-    }
+    health.attackCooldownBarForeground.setSize(sf::Vector2f(50.f, 4.f));
+    health.attackCooldownBarForeground.setFillColor(sf::Color::Yellow);
+    health.attackCooldownBarForeground.setOrigin(25.f, 2.f);
 
     // Konfiguracja paska przeładowania kuszy
-    specialCooldownBarBackground.setSize(sf::Vector2f(50.f, 4.f));
-    specialCooldownBarBackground.setFillColor(sf::Color(50, 0, 50)); // Ciemnofioletowy tło
-    specialCooldownBarBackground.setOrigin(25.f, 2.f);
+    health.specialCooldownBarBackground.setSize(sf::Vector2f(50.f, 4.f));
+    health.specialCooldownBarBackground.setFillColor(sf::Color(50, 0, 50)); // Ciemnofioletowy tło
+    health.specialCooldownBarBackground.setOrigin(25.f, 2.f);
 
-    specialCooldownBarForeground.setSize(sf::Vector2f(50.f, 4.f));
-    specialCooldownBarForeground.setFillColor(sf::Color(255, 0, 255)); // Magenta (Kusza)
-    specialCooldownBarForeground.setOrigin(25.f, 2.f);
+    health.specialCooldownBarForeground.setSize(sf::Vector2f(50.f, 4.f));
+    health.specialCooldownBarForeground.setFillColor(sf::Color(255, 0, 255)); // Magenta (Kusza)
+    health.specialCooldownBarForeground.setOrigin(25.f, 2.f);
+
+    // Konfiguracja wskaźnika ataku (pomocniczy hitbox)
+    combat.attackIndicator.setSize(combat.attackSize);
+    combat.attackIndicator.setOrigin(0.f, combat.attackSize.y / 2.f);
+    combat.attackIndicator.setFillColor(sf::Color(255, 0, 0, 0));
+
+    // Konfiguracja Aury Ognia
+    weapons.fireAuraShape.setRadius(weapons.fireAuraRadius);
+    weapons.fireAuraShape.setOrigin(weapons.fireAuraRadius, weapons.fireAuraRadius);
+    weapons.fireAuraShape.setFillColor(sf::Color(255, 80, 0, 70));
+
+    // Konfiguracja Orbitującego Ostrza
+    auto swordTex = AssetManager::loadTexture("assets/player/attacks/orbitingSword/sword.png");
+    if(swordTex) {
+        swordTex->setSmooth(false);
+        weapons.orbitSwordShape.setTexture(*swordTex);
+        sf::FloatRect lb = weapons.orbitSwordShape.getLocalBounds();
+        weapons.orbitSwordShape.setOrigin(lb.width / 2.f, lb.height / 2.f);
+    }
 }
 
 // Ładowanie tekstur
@@ -112,215 +99,233 @@ void Player::loadTextures() {
 
     bool allOk = true;
     for(int d = 0; d < 4; ++d) {
-        if(!textures[0][d].loadFromFile(idlePaths[d])) allOk = false;
-        if(!textures[1][d].loadFromFile(runPaths[d])) allOk = false;
+        auto idle = AssetManager::loadTexture(idlePaths[d]);
+        auto run = AssetManager::loadTexture(runPaths[d]);
+
+        if(idle && run) {
+            idle->setSmooth(false);
+            run->setSmooth(false);
+            animation.textures[0][d] = idle.get();
+            animation.textures[1][d] = run.get();
+        } else {
+            allOk = false;
+        }
+
         for(int c = 0; c < 2; ++c) {
-            if(!attackTextures[c][d].loadFromFile(attackPaths[c][d])) allOk = false;
+            auto attackTex = AssetManager::loadTexture(attackPaths[c][d]);
+            if(attackTex) {
+                attackTex->setSmooth(false);
+                animation.attackTextures[c][d] = attackTex.get();
+            } else {
+                allOk = false;
+            }
         }
     }
-    texturesLoaded = allOk;
 
-    if(texturesLoaded) {
-        sprite.setTexture(textures[0][static_cast<int>(AnimDir::DOWN)]);
-        attackSprite.setTexture(attackTextures[0][static_cast<int>(AnimDir::DOWN)]);
+    animation.texturesLoaded = allOk;
+
+    if(animation.texturesLoaded && animation.textures[0][0] && animation.attackTextures[0][0]) {
+        animation.sprite.setTexture(*animation.textures[0][0]);
+        animation.attackSprite.setTexture(*animation.attackTextures[0][0]);
     }
 }
 
 // Aktualizacja animacji ruchu
 void Player::updateAnimation(const sf::Vector2f& movement, bool isMoving, float deltaTime) {
-    if(!texturesLoaded) return;
+    if(!animation.texturesLoaded) return;
 
     // Wyznaczanie nowego stanu i kierunku
-    AnimState newState = isMoving ? AnimState::RUN : AnimState::IDLE;
-    AnimDir newDir = animDir;
+    int newState = isMoving ? 1 : 0; // 1=RUN, 0=IDLE
+    int newDir = animation.animDir;
 
     if(isMoving) {
         // Wybieranie kierunku na podstawie dominującej osi
         if(std::abs(movement.y) >= std::abs(movement.x)) {
-            newDir = (movement.y > 0.f) ? AnimDir::DOWN : AnimDir::UP;
+            newDir = (movement.y > 0.f) ? 0 : 3; // DOWN lub UP
         } else {
-            newDir = (movement.x > 0.f) ? AnimDir::RIGHT : AnimDir::LEFT;
+            newDir = (movement.x > 0.f) ? 2 : 1; // RIGHT lub LEFT
         }
     }
 
     // Zmiana tekstury jeśli zmienił się stan lub kierunek
-    if(newState != animState || newDir != animDir) {
-        animState = newState;
-        animDir = newDir;
-        currentFrame = 0;   // Reset klatki przy zmianie animacji
-        frameTimer = 0.f;
-        sprite.setTexture(textures[static_cast<int>(animState)][static_cast<int>(animDir)]);
+    if(newState != animation.animState || newDir != animation.animDir) {
+        animation.animState = newState;
+        animation.animDir = newDir;
+        animation.currentFrame = 0;   // Reset klatki przy zmianie animacji
+        animation.frameTimer = 0.f;
+        if (animation.textures[animation.animState][animation.animDir]) {
+            animation.sprite.setTexture(*animation.textures[animation.animState][animation.animDir]); // Dodana *
+        }
     }
 
     // Przesuwanie klatki animacji
-    frameTimer += deltaTime;
-    if(frameTimer >= frameSpeed) {
-        frameTimer -= frameSpeed;
-        currentFrame = (currentFrame + 1) % FRAME_COUNT;
+    animation.frameTimer += deltaTime;
+    if(animation.frameTimer >= animation.frameSpeed) {
+        animation.frameTimer -= animation.frameSpeed;
+        animation.currentFrame = (animation.currentFrame + 1) % PlayerConfig::FRAME_COUNT;
     }
 
-    sprite.setTextureRect(sf::IntRect(currentFrame * FRAME_W, 0, FRAME_W, FRAME_H));
+    animation.sprite.setTextureRect(sf::IntRect(animation.currentFrame * PlayerConfig::FRAME_WIDTH, 0, PlayerConfig::FRAME_WIDTH, PlayerConfig::FRAME_HEIGHT));
 }
 
 void Player::takeDamage(int amount) {
     // Jeśli gracz robi unik lub ma aktywną nietykalność, nie otrzymuje obrażeń
-    if(!isDashing && invincibilityTimer <= 0.f) {
+    if(!movement.isDashing && health.invincibilityTimer <= 0.f) {
 
         // Szansa na całkowite uniknięcie ciosu (Miss)
-        bool isDodged = (static_cast<float>(rand() % 100) / 100.f) < dodgeChance;
+        bool isDodged = (static_cast<float>(rand() % 100) / 100.f) < stats.dodgeChance;
         if (isDodged) return;
 
         // Pancerz zmniejsza obrażenia (gracz zawsze otrzyma minimum 1 dmg)
-        int finalDamage = amount - armor;
+        int finalDamage = amount - stats.armor;
         if(finalDamage < 1) finalDamage = 1;
 
-        hp -= finalDamage;
-        invincibilityTimer = 1.0f;
-        if(hp < 0) hp = 0;
+        health.hp -= finalDamage;
+        health.invincibilityTimer = 1.0f;
+        if(health.hp < 0) health.hp = 0;
     }
 }
 
 // Uruchamia hitbox i animacje
 void Player::castAttack() {
     // Hitbox aktywny
-    isAttacking = true;
-    durationTimer = attackDuration;
+    combat.isAttacking = true;
+    combat.durationTimer = combat.attackDuration;
 
     // Wybieranie kieruneku na podstawie pozycji myszy
-    AnimDir dir;
-    if(std::abs(mouseDirection.y) >= std::abs(mouseDirection.x)) {
-        dir = (mouseDirection.y > 0.f) ? AnimDir::DOWN : AnimDir::UP;
+    int dir;
+    if(std::abs(movement.mouseDirection.y) >= std::abs(movement.mouseDirection.x)) {
+        dir = (movement.mouseDirection.y > 0.f) ? 0 : 3;
     } else {
-        dir = (mouseDirection.x > 0.f) ? AnimDir::RIGHT : AnimDir::LEFT;
+        dir = (movement.mouseDirection.x > 0.f) ? 2 : 1;
     }
 
     // Ustawienie odpowiedniej tekstury (1 lub 2)
-    if(texturesLoaded) {
-        attackSprite.setTexture(attackTextures[attackCombo][static_cast<int>(dir)]);
+    if(animation.texturesLoaded && animation.attackTextures[animation.attackCombo][dir]) {
+        animation.attackSprite.setTexture(*animation.attackTextures[animation.attackCombo][dir]); // Dodana *
     }
-    attackCombo = (attackCombo + 1) % 2; // Zmiana wariantu
+    animation.attackCombo = (animation.attackCombo + 1) % 2; // Zmiana wariantu
 
     // Reset animacji
-    attackAnimFrame = 0;
-    attackAnimTimer = 0.f;
-    showAttackAnim = true;
-    attackSprite.setTextureRect(sf::IntRect(0, 0, FRAME_W, FRAME_H));
+    animation.attackAnimFrame = 0;
+    animation.attackAnimTimer = 0.f;
+    animation.showAttackAnim = true;
+    animation.attackSprite.setTextureRect(sf::IntRect(0, 0, PlayerConfig::FRAME_WIDTH, PlayerConfig::FRAME_HEIGHT));
 }
 
 void Player::update(float deltaTime) {
-
     // Pasywna regeneracja zdrowia
-    if (hpRegenRate > 0) {
-        hpRegenTimer += deltaTime;
-        if (hpRegenTimer >= 5.0f) { // Co 5 sekund
-            heal(hpRegenRate);
-            hpRegenTimer = 0.f;
+    if (stats.hpRegenRate > 0) {
+        stats.hpRegenTimer += deltaTime;
+        if (stats.hpRegenTimer >= 5.0f) { // Co 5 sekund
+            heal(stats.hpRegenRate);
+            stats.hpRegenTimer = 0.f;
         }
     }
 
     // Nietykalność gracza
-    if(invincibilityTimer > 0.f) {
-        invincibilityTimer -= deltaTime;
-        sf::Color blinkColor = static_cast<int>(invincibilityTimer * 10) % 2 == 0 ? sf::Color(255, 255, 255, 100) : sf::Color::White;
-        sprite.setColor(blinkColor);
-        attackSprite.setColor(blinkColor);
-    } else if(!isDashing) {
-        sprite.setColor(sf::Color::White);
-        attackSprite.setColor(sf::Color::White);
+    if(health.invincibilityTimer > 0.f) {
+        health.invincibilityTimer -= deltaTime;
+        sf::Color blinkColor = static_cast<int>(health.invincibilityTimer * 10) % 2 == 0 ? sf::Color(255, 255, 255, 100) : sf::Color::White;
+        animation.sprite.setColor(blinkColor);
+        animation.attackSprite.setColor(blinkColor);
+    } else if(!movement.isDashing) {
+        animation.sprite.setColor(sf::Color::White);
+        animation.attackSprite.setColor(sf::Color::White);
     }
 
     // Kierunek myszy
-    float dx = mousePosition.x - position.x;
-    float dy = mousePosition.y - position.y;
+    float dx = movement.mousePosition.x - position.x;
+    float dy = movement.mousePosition.y - position.y;
     float dist = std::sqrt(dx * dx + dy * dy);
     if(dist > 5.f) {
-        mouseDirection = sf::Vector2f(dx / dist, dy /dist);
+        movement.mouseDirection = sf::Vector2f(dx / dist, dy /dist);
     }
 
     // Timery
-    specialTimer += deltaTime;
-    dashTimer += deltaTime;
+    combat.specialTimer += deltaTime;
+    movement.dashTimer += deltaTime;
 
-    if(attackTimer < attackCooldown) {
-        attackTimer += deltaTime;
+    if(combat.attackTimer < combat.attackCooldown) {
+        combat.attackTimer += deltaTime;
     }
 
     // Atak pod LPM
     bool lmbNow = sf::Mouse::isButtonPressed(sf::Mouse::Left);
-    if(lmbNow && !prevLMBPressed && attackTimer >= attackCooldown) {
+    if(lmbNow && !combat.prevLMBPressed && combat.attackTimer >= combat.attackCooldown) {
         castAttack();
-        attackTimer = 0.f;
+        combat.attackTimer = 0.f;
     }
-    prevLMBPressed = lmbNow;
+    combat.prevLMBPressed = lmbNow;
 
     // Wyłącz hitbox po upływie attackDuration
-    if(isAttacking) {
-        durationTimer -= deltaTime;
-        if(durationTimer <= 0.f) isAttacking = false;
+    if(combat.isAttacking) {
+        combat.durationTimer -= deltaTime;
+        if(combat.durationTimer <= 0.f) combat.isAttacking = false;
     }
 
     // Animacja ataku
-    if(showAttackAnim) {
-        attackAnimTimer += deltaTime;
-        if(attackAnimTimer >= ATTACK_ANIM_SPEED) {
-            attackAnimTimer -= ATTACK_ANIM_SPEED;
-            attackAnimFrame++;
-            if(attackAnimFrame >= FRAME_COUNT) {
+    if(animation.showAttackAnim) {
+        animation.attackAnimTimer += deltaTime;
+        if(animation.attackAnimTimer >= 0.07f) {
+            animation.attackAnimTimer -= 0.07f;
+            animation.attackAnimFrame++;
+            if(animation.attackAnimFrame >= PlayerConfig::FRAME_COUNT) {
                 // Animacja skonczona
-                showAttackAnim = false;
-                attackAnimFrame = 0;
+                animation.showAttackAnim = false;
+                animation.attackAnimFrame = 0;
             } else {
-                attackSprite.setTextureRect(sf::IntRect(attackAnimFrame * FRAME_W, 0, FRAME_W, FRAME_H));
+                animation.attackSprite.setTextureRect(sf::IntRect(animation.attackAnimFrame * PlayerConfig::FRAME_WIDTH, 0, PlayerConfig::FRAME_WIDTH, PlayerConfig::FRAME_HEIGHT));
             }
         }
-        attackSprite.setPosition(position);
+        animation.attackSprite.setPosition(position);
     }
 
     // Strzał kuszą
-    if(sf::Keyboard::isKeyPressed(sf::Keyboard::R) && specialTimer >= specialCooldown) {
-        wantsToShootSpecial = true;
-        specialTimer = 0.f;
+    if(sf::Keyboard::isKeyPressed(sf::Keyboard::R) && combat.specialTimer >= combat.specialCooldown) {
+        combat.wantsToShootSpecial = true;
+        combat.specialTimer = 0.f;
     }
 
     // Unik
-    if(sf::Keyboard::isKeyPressed(sf::Keyboard::Space) && dashTimer >= dashCooldown && !isDashing) {
-        isDashing = true;
-        dashDurationTimer = dashDuration;
-        dashTimer = 0.f;
+    if(sf::Keyboard::isKeyPressed(sf::Keyboard::Space) && movement.dashTimer >= movement.dashCooldown && !movement.isDashing) {
+        movement.isDashing = true;
+        movement.dashDurationTimer = movement.dashDuration;
+        movement.dashTimer = 0.f;
     }
 
     // Ruch gracza
-    sf::Vector2f movement(0.f, 0.f);
+    sf::Vector2f movement_vec(0.f, 0.f);
     bool isMoving = false;
 
-    if(isDashing) {
-        position += lastDirection * dashSpeed * deltaTime;
+    if(movement.isDashing) {
+        position += movement.lastDirection * movement.dashSpeed * deltaTime;
         sf::Color dashColor(180, 180, 255, 200);
-        sprite.setColor(dashColor);
-        attackSprite.setColor(dashColor);
-        dashDurationTimer -= deltaTime;
+        animation.sprite.setColor(dashColor);
+        animation.attackSprite.setColor(dashColor);
+        movement.dashDurationTimer -= deltaTime;
 
-        if(dashDurationTimer <= 0.f) {
-            isDashing = false;
-            sprite.setColor(sf::Color::White);
-            attackSprite.setColor(sf::Color::White);
+        if(movement.dashDurationTimer <= 0.f) {
+            movement.isDashing = false;
+            animation.sprite.setColor(sf::Color::White);
+            animation.attackSprite.setColor(sf::Color::White);
         }
     } else {
         // Odczyt 8 kierunków
-        if(sf::Keyboard::isKeyPressed(sf::Keyboard::W)) movement.y -= 1.f;
-        if(sf::Keyboard::isKeyPressed(sf::Keyboard::S)) movement.y += 1.f;
-        if(sf::Keyboard::isKeyPressed(sf::Keyboard::A)) movement.x -= 1.f;
-        if(sf::Keyboard::isKeyPressed(sf::Keyboard::D)) movement.x += 1.f;
+        if(sf::Keyboard::isKeyPressed(sf::Keyboard::W)) movement_vec.y -= 1.f;
+        if(sf::Keyboard::isKeyPressed(sf::Keyboard::S)) movement_vec.y += 1.f;
+        if(sf::Keyboard::isKeyPressed(sf::Keyboard::A)) movement_vec.x -= 1.f;
+        if(sf::Keyboard::isKeyPressed(sf::Keyboard::D)) movement_vec.x += 1.f;
 
         // Długość wektora
-        float length = std::sqrt(movement.x * movement.x + movement.y * movement.y);
+        float length = std::sqrt(movement_vec.x * movement_vec.x + movement_vec.y * movement_vec.y);
 
         if(length > 0.f) {
-            movement /= length; // Normalizacja wektora ruchu
-            lastDirection = movement;
+            movement_vec /= length; // Normalizacja wektora ruchu
+            movement.lastDirection = movement_vec;
 
             // Ruch oparty o deltaTime
-            position += movement * speed * deltaTime;
+            position += movement_vec * movement.speed * deltaTime;
 
             // Do animacji
             isMoving = true;
@@ -328,62 +333,62 @@ void Player::update(float deltaTime) {
     }
 
     // Animacja
-    updateAnimation(movement, isMoving, deltaTime);
+    updateAnimation(movement_vec, isMoving, deltaTime);
 
 
-    sprite.setPosition(position);
+    animation.sprite.setPosition(position);
 
     // Aktualizacja wskaźnika ataku
-    float angle = std::atan2(mouseDirection.y, mouseDirection.x) * 180.f / 3.13159265f;
-    attackIndicator.setPosition(position);
-    attackIndicator.setRotation(angle);
+    float angle = std::atan2(movement.mouseDirection.y, movement.mouseDirection.x) * 180.f / 3.13159265f;
+    combat.attackIndicator.setPosition(position);
+    combat.attackIndicator.setRotation(angle);
 
     // Aktualizacja Pasywnych Broni
-    if (hasFireAura) {
-        fireAuraShape.setPosition(position);
+    if (weapons.hasFireAura) {
+        weapons.fireAuraShape.setPosition(position);
     }
-    if (hasOrbitingSword) {
-        orbitAngle += orbitSpeed * deltaTime;
-        if (orbitAngle >= 360.f) orbitAngle -= 360.f;
+    if (weapons.hasOrbitingSword) {
+        weapons.orbitAngle += weapons.orbitSpeed * deltaTime;
+        if (weapons.orbitAngle >= 360.f) weapons.orbitAngle -= 360.f;
 
-        float rad = orbitAngle * 3.14159f / 180.f;
+        float rad = weapons.orbitAngle * 3.14159f / 180.f;
         float orbitDistance = 100.f; // Jak daleko od gracza lata miecz
-        orbitSwordShape.setPosition(position.x + std::cos(rad) * orbitDistance, position.y + std::sin(rad) * orbitDistance);
-        orbitSwordShape.setRotation(orbitAngle - 45.f); // Ostrze zwrócone w stronę lotu
+        weapons.orbitSwordShape.setPosition(position.x + std::cos(rad) * orbitDistance, position.y + std::sin(rad) * orbitDistance);
+        weapons.orbitSwordShape.setRotation(weapons.orbitAngle - 45.f); // Ostrze zwrócone w stronę lotu
     }
 
     // Pasek HP
-    float hpPercent = std::max(0.f, static_cast<float>(hp) / maxHp);
-    hpBarForeground.setSize(sf::Vector2f(50.f * hpPercent, 6.f));
-    hpBarBackground.setPosition(position.x, position.y + 30.f);
-    hpBarForeground.setPosition(position.x, position.y + 30.f);
+    float hpPercent = std::max(0.f, static_cast<float>(health.hp) / health.maxHp);
+    health.hpBarForeground.setSize(sf::Vector2f(50.f * hpPercent, 6.f));
+    health.hpBarBackground.setPosition(position.x, position.y + 30.f);
+    health.hpBarForeground.setPosition(position.x, position.y + 30.f);
 
     // Pasek Cooldownu
-    float cdPercent = std::min(1.f, attackTimer / attackCooldown);
-    attackCooldownBarForeground.setSize(sf::Vector2f(50.f * cdPercent, 4.f));
-    attackCooldownBarBackground.setPosition(position.x, position.y + 38.f);
-    attackCooldownBarForeground.setPosition(position.x, position.y + 38.f);
+    float cdPercent = std::min(1.f, combat.attackTimer / combat.attackCooldown);
+    health.attackCooldownBarForeground.setSize(sf::Vector2f(50.f * cdPercent, 4.f));
+    health.attackCooldownBarBackground.setPosition(position.x, position.y + 38.f);
+    health.attackCooldownBarForeground.setPosition(position.x, position.y + 38.f);
 
     // Pasek kuszy
-    float spPercent = std::min(1.f, specialTimer / specialCooldown);
-    specialCooldownBarForeground.setSize(sf::Vector2f(50.f * spPercent, 4.f));
-    specialCooldownBarBackground.setPosition(position.x, position.y + 44.f);
-    specialCooldownBarForeground.setPosition(position.x, position.y + 44.f);
+    float spPercent = std::min(1.f, combat.specialTimer / combat.specialCooldown);
+    health.specialCooldownBarForeground.setSize(sf::Vector2f(50.f * spPercent, 4.f));
+    health.specialCooldownBarBackground.setPosition(position.x, position.y + 44.f);
+    health.specialCooldownBarForeground.setPosition(position.x, position.y + 44.f);
 }
 
 void Player::draw(sf::RenderWindow& window) {
-    window.draw(hpBarBackground);
-    window.draw(hpBarForeground);
-    window.draw(attackCooldownBarBackground);
-    window.draw(attackCooldownBarForeground);
-    window.draw(specialCooldownBarBackground);
-    window.draw(specialCooldownBarForeground);
-    if (hasFireAura) window.draw(fireAuraShape);
-    if (hasOrbitingSword) window.draw(orbitSwordShape);
-    if(showAttackAnim) {
-        window.draw(attackSprite);
+    window.draw(health.hpBarBackground);
+    window.draw(health.hpBarForeground);
+    window.draw(health.attackCooldownBarBackground);
+    window.draw(health.attackCooldownBarForeground);
+    window.draw(health.specialCooldownBarBackground);
+    window.draw(health.specialCooldownBarForeground);
+    if (weapons.hasFireAura) window.draw(weapons.fireAuraShape);
+    if (weapons.hasOrbitingSword) window.draw(weapons.orbitSwordShape);
+    if(animation.showAttackAnim) {
+        window.draw(animation.attackSprite);
     } else {
-        window.draw(sprite);
+        window.draw(animation.sprite);
     }
 }
 
@@ -392,63 +397,64 @@ sf::FloatRect Player::getBounds() const {
 }
 
 sf::FloatRect Player::getAttackBounds() const {
-    return attackIndicator.getGlobalBounds();
+    return combat.attackIndicator.getGlobalBounds();
 }
 
 void Player::addXp(int amount) {
-    xp += amount;
+    progression.xp += amount;
 }
 
 void Player::applyUpgrade(int choice) {
     switch (choice) {
-    case 0: maxHp += 20; hp = maxHp; break;
-    case 1: speed *= 1.15f; break;
-    case 2: attackCooldown *= 0.90f; break;
-    case 3: damageBonus += 5; break;
-    case 4: armor += 2; break;
-    case 5: critChance += 0.05f; break;
-    case 6: vampirismChance += 0.05f; break;
-    case 7: pickupRadiusBonus += 40.f; break;
-    case 8: dodgeChance += 0.10f; break;
-    case 9: specialCooldown *= 0.80f; break;
-    case 10: hpRegenRate += 1; break;
+    case 0: health.maxHp += 20; health.hp = health.maxHp; break;
+    case 1: movement.speed *= 1.15f; break;
+    case 2: combat.attackCooldown *= 0.90f; break;
+    case 3: stats.damageBonus += 5; break;
+    case 4: stats.armor += 2; break;
+    case 5: stats.critChance += 0.05f; break;
+    case 6: stats.vampirismChance += 0.05f; break;
+    case 7: stats.pickupRadiusBonus += 40.f; break;
+    case 8: stats.dodgeChance += 0.10f; break;
+    case 9: combat.specialCooldown *= 0.80f; break;
+    case 10: stats.hpRegenRate += 1; break;
     case 11: // AURA OGNIA
-        if (!hasFireAura) { hasFireAura = true; }
-        else { fireAuraRadius += 25.f; fireAuraShape.setRadius(fireAuraRadius); fireAuraShape.setOrigin(fireAuraRadius, fireAuraRadius); }
+        if (!weapons.hasFireAura) { weapons.hasFireAura = true; }
+        else { weapons.fireAuraRadius += 25.f; weapons.fireAuraShape.setRadius(weapons.fireAuraRadius); weapons.fireAuraShape.setOrigin(weapons.fireAuraRadius, weapons.fireAuraRadius); }
         break;
     case 12: // ORBITUJĄCE OSTRZE
-        if (!hasOrbitingSword) { hasOrbitingSword = true; }
-        else { orbitSpeed += 80.f; } // Miecz lata coraz szybciej
+        if (!weapons.hasOrbitingSword) { weapons.hasOrbitingSword = true; }
+        else { weapons.orbitSpeed += 80.f; } // Miecz lata coraz szybciej
         break;
     case 13: // RÓŻDŻKA
-        if (!hasWand) { hasWand = true; }
+        if (!weapons.hasWand) { weapons.hasWand = true; }
         else {
-            wandCooldown *= 0.85f;      // -15% cooldown
-            wandProjectiles += 1;       // +1 pocisk
-            wandDamageBonus += 3;       // +3 dmg
+            weapons.wandCooldown *= 0.85f;      // -15% cooldown
+            weapons.wandProjectiles += 1;       // +1 pocisk
+            weapons.wandDamageBonus += 3;       // +3 dmg
         }
         break;
     }
 
 }
+
 void Player::heal(int amount) {
-    hp += amount;
-    if(hp > maxHp) {
-        hp = maxHp;
+    health.hp += amount;
+    if(health.hp > health.maxHp) {
+        health.hp = health.maxHp;
     }
 }
 
 int Player::getDamage(int baseDamage, bool* wasCrit) const {
     // Losowanie szansy na krytyk
-    bool isCrit = (static_cast<float>(rand() % 100) / 100.f) < critChance;
+    bool isCrit = (static_cast<float>(rand() % 100) / 100.f) < stats.critChance;
     if(wasCrit) *wasCrit = isCrit;
-    int finalDamage = baseDamage + damageBonus;
+    int finalDamage = baseDamage + stats.damageBonus;
     return isCrit ? (finalDamage * 2) : finalDamage;
 }
 
 void Player::triggerVampirism() {
-    if (vampirismChance > 0.0f) {
-        bool isVamp = (static_cast<float>(rand() % 100) / 100.f) < vampirismChance;
+    if (stats.vampirismChance > 0.0f) {
+        bool isVamp = (static_cast<float>(rand() % 100) / 100.f) < stats.vampirismChance;
         if (isVamp) {
             heal(2); // Drobne uleczenie po zabójstwie
         }

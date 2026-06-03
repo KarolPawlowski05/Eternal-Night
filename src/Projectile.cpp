@@ -1,36 +1,27 @@
 #include "Projectile.h"
+#include "AssetManager.h"
 
-Projectile::Projectile(float startX, float startY, sf::Vector2f direction, float customSpeed, bool enemy, bool wand) : GameObject(startX, startY), speed(customSpeed), isEnemyOwned(enemy), isWand(wand){
+Projectile::Projectile(float startX, float startY, sf::Vector2f direction, float customSpeed, bool enemy, bool wand)
+    : GameObject(startX, startY), speed(customSpeed), isEnemyOwned(enemy), isWand(wand),
+    hasTarget(false), distanceTraveled(0.f) {
 
     velocity = direction * speed;
 
     if (isEnemyOwned) {
-        // GŁAZ OGRA: Zamiast szukać tekstury strzały, generujemy brązowy "kamień"
-        arrowTexture.create(16, 16);
+        // Głaz ogra
+        auto rockTexture = std::make_shared<sf::Texture>();
+        rockTexture->create(16, 16);
         sf::Image img;
         img.create(16, 16, sf::Color(139, 69, 19)); // Brązowy kolor
-        arrowTexture.loadFromImage(img);
-        arrowSprite.setTexture(arrowTexture);
+        rockTexture->loadFromImage(img);
+
+        arrowTexture = rockTexture;
+        arrowSprite.setTexture(*arrowTexture);
         arrowSprite.setOrigin(8.f, 8.f);
-    }
-    else{
-        // STRZAŁA Z KUSZY GRACZA (Twój oryginalny kod)
-        if(arrowTexture.loadFromFile("assets/player/attacks/crossbow/arrow.png")) {
-            arrowSprite.setTexture(arrowTexture);
-            sf::FloatRect tb = arrowSprite.getLocalBounds();
-            arrowSprite.setOrigin(tb.width / 2.f, tb.height / 2.f);
-        } else {
-            // Error – biały prostokąt w rozmiarze strzałki (20x5)
-            arrowTexture.create(20, 5);
-            sf::Image img;
-            img.create(20, 5, sf::Color::White);
-            arrowTexture.loadFromImage(img);
-            arrowSprite.setTexture(arrowTexture);
-            arrowSprite.setOrigin(10.f, 2.5f);
-        }
-    }
-    if (isWand) {
-        arrowTexture.create(12, 12);
+    } else if (isWand) {
+        // Różdżka
+        auto wandTexture = std::make_shared<sf::Texture>();
+        wandTexture->create(12, 12);
         sf::Image img;
         img.create(12, 12, sf::Color(0, 0, 0, 0)); // przezroczyste tło
         // Rysujemy kółko fioletowe ręcznie
@@ -43,9 +34,29 @@ Projectile::Projectile(float startX, float startY, sf::Vector2f direction, float
                 }
             }
         }
-        arrowTexture.loadFromImage(img);
-        arrowSprite.setTexture(arrowTexture);
+        wandTexture->loadFromImage(img);
+        arrowTexture = wandTexture;
+        arrowSprite.setTexture(*arrowTexture);
         arrowSprite.setOrigin(6.f, 6.f);
+    } else {
+        // STRZAŁA Z KUSZY GRACZA
+        arrowTexture = AssetManager::loadTexture("assets/player/attacks/crossbow/arrow.png");
+
+        if(arrowTexture) {
+            arrowSprite.setTexture(*arrowTexture);
+            sf::FloatRect tb = arrowSprite.getLocalBounds();
+            arrowSprite.setOrigin(tb.width / 2.f, tb.height / 2.f);
+        } else {
+            // Error – biały prostokąt w rozmiarze strzałki (20x5)
+            auto fallbackTexture = std::make_shared<sf::Texture>();
+            fallbackTexture->create(20, 5);
+            sf::Image img;
+            img.create(20, 5, sf::Color::White);
+            fallbackTexture->loadFromImage(img);
+            arrowTexture = fallbackTexture;
+            arrowSprite.setTexture(*arrowTexture);
+            arrowSprite.setOrigin(10.f, 2.5f);
+        }
     }
     arrowSprite.setPosition(position);
 

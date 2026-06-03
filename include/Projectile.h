@@ -3,10 +3,11 @@
 
 #include "GameObject.h"
 #include <cmath>
+#include <memory>
 
 class Projectile : public GameObject {
 private:
-    sf::Texture arrowTexture;
+    std::shared_ptr<sf::Texture> arrowTexture;
     sf::Sprite arrowSprite;
     sf::Vector2f velocity;
     float speed;

@@ -2,12 +2,13 @@
 #define OBSTACLE_H
 
 #include "GameObject.h"
+#include <memory>
 
 enum class ObstacleType { TREE, BUSH, ROCK };
 
 class Obstacle : public GameObject {
 private:
-    sf::Texture texture;
+    std::shared_ptr<sf::Texture> texture;
     sf::Sprite sprite;
     ObstacleType type;
 

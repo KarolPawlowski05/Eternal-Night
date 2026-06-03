@@ -625,7 +625,6 @@ void Engine::update(float deltaTime) {
             if(player->getPickupBounds().intersects(bonus->getBounds())) {
                 if(bonus->getType() == BonusType::POTION) {
                     player->heal(20);
-                    player->incrementPotions();
                 }
                 bonus->destroy();
             }
