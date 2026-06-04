@@ -1,5 +1,6 @@
 #include "Enemy.h"
-#include <Player.h>
+#include "Player.h"
+#include "Config.h"
 #include <cmath>
 #include <algorithm>
 
@@ -13,55 +14,30 @@ Enemy::Enemy(float x, float y, EnemyType type, std::shared_ptr<Player> player, f
     fireAuraCooldown = 0.f;
     swordCooldown = 0.f;
     abilityTimer = static_cast<float>(rand() % 300) / 100.f;
-    isKamikaze = false;
-    isGhost = false;
-    isVampire = false;
 
     isFaded = false;
     isBatForm = false;
     readyToThrow = false;
 
-    //konfiguracja wygladu wroga
-    sprite.setSize(sf::Vector2f(30.f, 30.f));
-    sprite.setOrigin(15.f, 15.f);
+    // Flagi specjalne - tylko typ decyduje
+    isKamikaze =    (type == EnemyType::KAMIKAZE);
+    isGhost =       (type == EnemyType::ZJAWA);
+    isVampire =     (type == EnemyType::WAMPIR);
+
+    // Z EnemyConfig
+    int typeId = static_cast<int>(type);
+    const auto& cfg = EnemyConfig::ENEMY_STATS.at(typeId);
+
+    baseColor   = cfg.color;
+    speed       = cfg.baseSpeed * speedMult;
+    baseSpeed   = speed;
+    maxHp       = static_cast<int>(cfg.baseHp * hpMult);
+    hp          = maxHp;
+
+    float sz = cfg.size;
+    sprite.setSize(sf::Vector2f(sz, sz));
+    sprite.setOrigin(sz / 2.f, sz / 2.f);
     sprite.setPosition(position);
-
-    //Predkosc i kolor wroga zależne od typu
-    if (type == EnemyType::TRUPOJADY) {
-        baseColor = sf::Color::Magenta; speed = 55.f * speedMult; maxHp = 50 * hpMult;
-    }
-    else if (type == EnemyType::OGROWATE) {
-        baseColor = sf::Color::Green; speed = 30.f * speedMult; maxHp = 200 * hpMult;
-        sprite.setSize(sf::Vector2f(45.f, 45.f));
-        sprite.setOrigin(22.5f, 22.5f);
-    }
-    else if (type == EnemyType::UPIOR) {
-        baseColor = sf::Color::White; speed = 75.f * speedMult; maxHp = 35 * hpMult;
-    }
-    else if (type == EnemyType::KAMIKAZE) {
-        baseColor = sf::Color(255, 165, 0); // Pomarańczowy
-        speed = 150.f * speedMult; maxHp = 5 * hpMult;
-        isKamikaze = true;
-    }
-    else if (type == EnemyType::CIEN) {
-        baseColor = sf::Color(80, 80, 80); // Ciemnoszary
-        speed = 60.f * speedMult; maxHp = 80 * hpMult;
-    }
-    else if (type == EnemyType::WAMPIR) {
-        baseColor = sf::Color(200, 0, 0); // Karmazynowy
-        speed = 65.f * speedMult; maxHp = 80 * hpMult;
-        sprite.setSize(sf::Vector2f(36.f, 36.f));
-        sprite.setOrigin(18.f, 18.f);
-        isVampire = true;
-    }
-    else if (type == EnemyType::ZJAWA) {
-        baseColor = sf::Color::Cyan; // Błękitny (zjawa)
-        speed = 50.f * speedMult; maxHp = 55 * hpMult;
-        isGhost = true;
-    }
-
-    hp = maxHp;
-    baseSpeed = speed;
     sprite.setFillColor(baseColor);
 
     // Paski HP
@@ -128,81 +104,83 @@ void Enemy::update(float deltaTime){
     if (fireAuraCooldown > 0.f) fireAuraCooldown -= deltaTime;
     if (swordCooldown > 0.f) swordCooldown -= deltaTime;
 
-    if (target) {
-        if (type != EnemyType::CIEN && !isFaded) {
-            if (damageCooldown <= 0.f && fireAuraCooldown <= 0.f && swordCooldown <= 0.f) {
-                sprite.setFillColor(isBatForm ? sf::Color(150, 0, 150) : baseColor);
-            }
-        }
-        sf::Vector2f playerPos = target->getPosition();
+    if(!target) { sprite.setPosition(position); return; }
 
-        // Obliczamy różnicę pozycji
-        float dx = playerPos.x - position.x;
-        float dy = playerPos.y - position.y;
-
-        // Obliczamy odległość z twierdzenia Pitagorasa
-        float distance = sqrt(dx * dx + dy * dy);
-
-        //Skile specjlane wrogów
-        // 1. Szarża Upiora (doskok co 3 sekundy)
-        if (type == EnemyType::UPIOR) {
-            abilityTimer += deltaTime;
-            if (abilityTimer >= 5.0f && abilityTimer <= 5.3f) speed = baseSpeed * 3.5f;
-            else if (abilityTimer > 5.3f) { speed = baseSpeed; abilityTimer = 0.f; }
-        }
-
-        // 2. Niewidzialność Cienia (ukrywanie się)
-        if (type == EnemyType::CIEN) {
-            abilityTimer += deltaTime;
-            if (abilityTimer >= 4.0f && abilityTimer < 5.0f) {
-                isFaded = true;
-                int flicker = static_cast<int>(abilityTimer * 10) % 2;
-                sprite.setFillColor(sf::Color(80, 80, 80, flicker == 0 ? 30 : 80));
-                hpBarBackground.setFillColor(sf::Color(0,0,0,0));
-                hpBarForeground.setFillColor(sf::Color(0,0,0,0));
-            } else {
-                isFaded = false;
-                abilityTimer = std::fmod(abilityTimer, 5.0f);
-                if (distance < 150.f) {
-                    sprite.setFillColor(sf::Color(80, 80, 80, 255));
-                    hpBarBackground.setFillColor(sf::Color(0,0,0,255));
-                    hpBarForeground.setFillColor(sf::Color(255,0,0,255));
-                } else {
-                    sprite.setFillColor(sf::Color(80, 80, 80, 30));
-                    hpBarBackground.setFillColor(sf::Color(0,0,0,0));
-                    hpBarForeground.setFillColor(sf::Color(0,0,0,0));
-                }
-            }
-        }
-        // Umiejetnosc ogra
-        if (type == EnemyType::OGROWATE) {
-            abilityTimer += deltaTime;
-            if (abilityTimer >= 8.0f) {
-                readyToThrow = true;
-                abilityTimer = 0.f;
-            }
-        }
-        // Umiejetnosc wampira
-        if (type == EnemyType::WAMPIR) {
-            if (hp < maxHp * 0.5f && !isBatForm) {
-                isBatForm = true;
-                speed = baseSpeed * 1.9f;
-                sprite.setSize(sf::Vector2f(14.f, 14.f));
-                sprite.setOrigin(7.f, 7.f);
-                sprite.setFillColor(sf::Color(150, 0, 150));
-            }
-        }
-
-        if (distance > 0) {
-            // Normalizujemy wektor żeby wróg nie poruszał się szybciej po skosie
-            float dirX = dx / distance;
-            float dirY = dy / distance;
-
-            // Zmieniamy matematyczną pozycję wroga
-            position.x += dirX * speed * deltaTime;
-            position.y += dirY * speed * deltaTime;
+    if (type != EnemyType::CIEN && !isFaded) {
+        if (damageCooldown <= 0.f && fireAuraCooldown <= 0.f && swordCooldown <= 0.f) {
+            sprite.setFillColor(isBatForm ? sf::Color(150, 0, 150) : baseColor);
         }
     }
+    sf::Vector2f playerPos = target->getPosition();
+
+    // Obliczamy różnicę pozycji
+     float dx = playerPos.x - position.x;
+    float dy = playerPos.y - position.y;
+
+    // Obliczamy odległość z twierdzenia Pitagorasa
+    float distance = sqrt(dx * dx + dy * dy);
+
+    // Skille specjalne wrogów
+
+    // 1. Szarża Upiora (doskok co 3 sekundy)
+    if (type == EnemyType::UPIOR) {
+        abilityTimer += deltaTime;
+        if (abilityTimer >= 5.0f && abilityTimer <= 5.3f) speed = baseSpeed * 3.5f;
+        else if (abilityTimer > 5.3f) { speed = baseSpeed; abilityTimer = 0.f; }
+    }
+
+    // 2. Niewidzialność Cienia (ukrywanie się)
+    if (type == EnemyType::CIEN) {
+        abilityTimer += deltaTime;
+        if (abilityTimer >= 4.0f && abilityTimer < 5.0f) {
+            isFaded = true;
+            int flicker = static_cast<int>(abilityTimer * 10) % 2;
+            sprite.setFillColor(sf::Color(80, 80, 80, flicker == 0 ? 30 : 80));
+            hpBarBackground.setFillColor(sf::Color(0,0,0,0));
+            hpBarForeground.setFillColor(sf::Color(0,0,0,0));
+        } else {
+            isFaded = false;
+            abilityTimer = std::fmod(abilityTimer, 5.0f);
+            if (distance < 150.f) {
+                sprite.setFillColor(sf::Color(80, 80, 80, 255));
+                hpBarBackground.setFillColor(sf::Color(0,0,0,255));
+                hpBarForeground.setFillColor(sf::Color(255,0,0,255));
+            } else {
+                sprite.setFillColor(sf::Color(80, 80, 80, 30));
+                hpBarBackground.setFillColor(sf::Color(0,0,0,0));
+                hpBarForeground.setFillColor(sf::Color(0,0,0,0));
+            }
+        }
+    }
+    // Umiejetnosc ogra
+    if (type == EnemyType::OGROWATE) {
+        abilityTimer += deltaTime;
+        if (abilityTimer >= 8.0f) {
+            readyToThrow = true;
+            abilityTimer = 0.f;
+        }
+    }
+    // Umiejetnosc wampira
+    if (type == EnemyType::WAMPIR) {
+        if (hp < maxHp * 0.5f && !isBatForm) {
+            isBatForm = true;
+            speed = baseSpeed * 1.9f;
+            sprite.setSize(sf::Vector2f(14.f, 14.f));
+            sprite.setOrigin(7.f, 7.f);
+            sprite.setFillColor(sf::Color(150, 0, 150));
+        }
+    }
+
+    if (distance > 0) {
+        // Normalizujemy wektor żeby wróg nie poruszał się szybciej po skosie
+        float dirX = dx / distance;
+        float dirY = dy / distance;
+
+        // Zmieniamy matematyczną pozycję wroga
+        position.x += dirX * speed * deltaTime;
+        position.y += dirY * speed * deltaTime;
+    }
+
     sprite.setPosition(position);
 
     float hpPercent = std::max(0.f, static_cast<float>(hp) / maxHp);

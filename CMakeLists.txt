@@ -17,6 +17,12 @@ file(GLOB_RECURSE SOURCES
 add_executable(${PROJECT_NAME} ${SOURCES})
 
 target_link_libraries(${PROJECT_NAME} PRIVATE sfml-graphics sfml-window sfml-system)
+# Starszy GCC (< 9) wymaga jawnego linkowania filesystem
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "9.0")
+        target_link_libraries(${PROJECT_NAME} PRIVATE stdc++fs)
+    endif()
+endif()
 
 # FoLder assets
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD

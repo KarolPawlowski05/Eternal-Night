@@ -5,7 +5,9 @@
 #include "Bonus.h"
 #include "Obstacle.h"
 #include "XpCrystal.h"
+#include "WaveManager.h"
 #include "DamageNumber.h"
+#include <filesystem>
 #include <algorithm>
 #include <cstdlib>
 #include <memory>
@@ -13,9 +15,12 @@
 #include <fstream>
 #include <ctime>
 
+namespace fs = std::filesystem;
+
 Engine::Engine() {
     // Rozmiar okna
     window.create(sf::VideoMode(1280, 720), "Eternal Night");
+    window.setFramerateLimit(60);
 
     // Gra startuje w Menu Głównym
     currentState = GameState::MAIN_MENU;
@@ -354,10 +359,9 @@ void Engine::resetGame() {
     lastObstacleSpawnPos = player->getPosition();
 
     // Resetujemy statystyki fali i czasu
-    currentWave = 1;
-    timeBetweenWaves = 20.0f;
-    waveTimer = 20.0f; // Od razu respi pierwszą falę
-    gameTime = 0.f;    // Resetujemy stoper i punkty
+    gameTime = 0.f;
+    waveManager = std::make_unique<WaveManager>(player, gameObjects);
+    waveManager->reset();
 
     // LOSOWE GENEROWANIE PRZESZKÓD
     for (int i = 0; i < 25; ++i) {
@@ -700,51 +704,7 @@ void Engine::update(float deltaTime) {
     manageInfiniteMap();
 }
 
-void Engine::render() {
-    window.clear(sf::Color(30, 30, 40));
-
-    if (currentState == GameState::MAIN_MENU) {
-        // Ustawienie tymczasowej kamery tylko dla menu
-        gameView.setSize(1280.f, 720.f);
-        gameView.setCenter(640.f, 360.f);
-        window.setView(gameView);
-
-        drawTerrain();
-        // Wracamy do widoku interfejsu żeby napisy nie były zniekształcone
-        window.setView(window.getDefaultView());
-        //  Rysowanie przycisków i tytułów
-        window.draw(menuTitle);
-        window.draw(btnStart); window.draw(textStart);
-        window.draw(btnQuit); window.draw(textQuit);
-        window.draw(btnScores);
-        window.draw(textBtnScores);
-
-    }
-    else if (currentState == GameState::PLAYING || currentState == GameState::LEVEL_UP || currentState == GameState::GAME_OVER || currentState == GameState::PAUSED) {
-
-        //  KAMERA ŚWIATA (Podąża za graczem)
-        gameView.setSize(1280.f, 720.f);
-        gameView.setCenter(player->getPosition());
-        window.setView(gameView);
-
-        // RYSOWANIE GRY (Dla stanów PLAYING, LEVEL_UP, GAME_OVER)
-        drawTerrain();
-
-
-    // Rysowanie wszystkich obiektów
-    for(auto& obj : gameObjects) {
-        if(obj->isActive()) {
-            obj->draw(window);
-        }
-    }
-
-    // Rysowanie hitboxów musi odbywać się w świecie gry
-    if(debugMode) drawDebugOverlay();
-
-
-    // 2. KAMERA INTERFEJSU
-    window.setView(window.getDefaultView());
-
+void Engine::renderHUD() {
     // Pasek XP
     float xpPercent = static_cast<float>(player->getXp()) / static_cast<float>(player->getMaxXp());
     xpBarForeground.setSize(sf::Vector2f(1280.f * xpPercent, 22.f));
@@ -787,7 +747,7 @@ void Engine::render() {
 
     //Rysowanie HUD
     std::string statsStr = "SCORE: " + std::to_string(score) +
-                           "\nWAVE: " + std::to_string(currentWave) + " (+" + std::to_string((int)(timeBetweenWaves - waveTimer)) + "s)" +
+                           "\nWAVE: " + std::to_string(waveManager ? waveManager->getCurrentWave() : 1) + " (+" + std::to_string(waveManager ? (int)waveManager->getSecondsToNextWave() : 0) + "s)" +
                            "\nARMOR: " + std::to_string(player->getArmor()) +
                            "\nDMG+: +" + std::to_string(player->getDamageBonus()) +
                            "\nCRIT: " + std::to_string(static_cast<int>(player->getCritChance() * 100)) + "%" +
@@ -800,7 +760,9 @@ void Engine::render() {
 
     window.draw(xpBarBackground);
     window.draw(xpBarForeground);
+}
 
+void Engine::renderLevelUpOverlay() {
     // Rysowanie menu awansu
     if (currentState == GameState::LEVEL_UP) {
         sf::RectangleShape overlay(sf::Vector2f(1280.f, 720.f));
@@ -812,55 +774,100 @@ void Engine::render() {
         window.draw(card3); window.draw(textCard3);
         window.draw(textTitle);
     }
-    else if (currentState == GameState::GAME_OVER) {
-        sf::RectangleShape overlay(sf::Vector2f(1280.f, 720.f));
-        overlay.setFillColor(sf::Color(0, 0, 0, 220)); // Mocne przyciemnienie tła
-        window.draw(overlay);
+}
 
-        // Rysowanie napisów ekranu śmierci
-        window.draw(textGameOver);
-        window.draw(textFinalScore);
-        window.draw(btnReturn); window.draw(textReturn);
-        if (!nameSaved) {
-            window.draw(textEnterName);
-            window.draw(textNameInput);
-        } else {
-            sf::Text savedMsg;
-            savedMsg.setFont(font);
-            savedMsg.setString("Score saved!");
-            savedMsg.setCharacterSize(24);
-            savedMsg.setFillColor(sf::Color(0, 255, 0));
-            sf::FloatRect sb = savedMsg.getLocalBounds();
-            savedMsg.setOrigin(sb.left + sb.width / 2.f, sb.top + sb.height / 2.f);
-            savedMsg.setPosition(640.f, 410.f);
-            window.draw(savedMsg);
+void Engine::renderGameOverOverlay() {
+    sf::RectangleShape overlay(sf::Vector2f(1280.f, 720.f));
+    overlay.setFillColor(sf::Color(0, 0, 0, 220)); // Mocne przyciemnienie tła
+    window.draw(overlay);
+
+    // Rysowanie napisów ekranu śmierci
+    window.draw(textGameOver);
+    window.draw(textFinalScore);
+    window.draw(btnReturn); window.draw(textReturn);
+    if (!nameSaved) {
+        window.draw(textEnterName);
+        window.draw(textNameInput);
+    } else {
+        sf::Text savedMsg;
+        savedMsg.setFont(font);
+        savedMsg.setString("Score saved!");
+        savedMsg.setCharacterSize(24);
+        savedMsg.setFillColor(sf::Color(0, 255, 0));
+        sf::FloatRect sb = savedMsg.getLocalBounds();
+        savedMsg.setOrigin(sb.left + sb.width / 2.f, sb.top + sb.height / 2.f);
+        savedMsg.setPosition(640.f, 410.f);
+        window.draw(savedMsg);
+    }
+}
+
+void Engine::renderPauseOverlay() {
+    sf::RectangleShape overlay(sf::Vector2f(1280.f, 720.f));
+    overlay.setFillColor(sf::Color(0, 0, 0, 180));
+    window.draw(overlay);
+
+    window.draw(textPaused);
+    window.draw(btnResume); window.draw(textResume);
+    window.draw(btnPauseReturn); window.draw(textPauseReturn);
+}
+
+void Engine::renderScoresScreen() {
+    window.clear(sf::Color(30, 30, 40));
+    sf::RectangleShape panel(sf::Vector2f(760.f, 500.f));
+    panel.setFillColor(sf::Color(40, 50, 70));
+    panel.setOutlineColor(sf::Color(180, 130, 30));
+    panel.setOutlineThickness(2.f);
+    panel.setPosition(260.f, 50.f);
+    window.draw(panel);
+    window.draw(textScoresTitle);
+    window.draw(textScoresList);
+    window.draw(btnReturnFromScores);
+    window.draw(textReturnFromScores);
+}
+
+void Engine::render() {
+    window.clear(sf::Color(30, 30, 40));
+
+    if (currentState == GameState::MAIN_MENU) {
+        // Ustawienie tymczasowej kamery tylko dla menu
+        gameView.setSize(1280.f, 720.f);
+        gameView.setCenter(640.f, 360.f);
+        window.setView(gameView);
+
+        drawTerrain();
+        // Wracamy do widoku interfejsu żeby napisy nie były zniekształcone
+        window.setView(window.getDefaultView());
+        //  Rysowanie przycisków i tytułów
+        window.draw(menuTitle);
+        window.draw(btnStart); window.draw(textStart);
+        window.draw(btnQuit); window.draw(textQuit);
+        window.draw(btnScores);
+        window.draw(textBtnScores);
+
+    } else {
+        //  KAMERA ŚWIATA (Podąża za graczem)
+        gameView.setSize(1280.f, 720.f);
+        gameView.setCenter(player->getPosition());
+        window.setView(gameView);
+        // RYSOWANIE GRY (Dla stanów PLAYING, LEVEL_UP, GAME_OVER)
+        drawTerrain();
+        // Rysowanie wszystkich obiektów
+        for(auto& obj : gameObjects) {
+            if(obj->isActive()) {
+                obj->draw(window);
+            }
         }
-    }
-    // RYSOWANIE MENU PAUZY
-    else if (currentState == GameState::PAUSED) {
-        sf::RectangleShape overlay(sf::Vector2f(1280.f, 720.f));
-        overlay.setFillColor(sf::Color(0, 0, 0, 180));
-        window.draw(overlay);
+        // Rysowanie hitboxów musi odbywać się w świecie gry
+        if(debugMode) drawDebugOverlay();
+        // Kamera interfejsu
+        window.setView(window.getDefaultView());
+        renderHUD();
 
-        window.draw(textPaused);
-        window.draw(btnResume); window.draw(textResume);
-        window.draw(btnPauseReturn); window.draw(textPauseReturn);
+        if      (currentState == GameState::LEVEL_UP)   renderLevelUpOverlay();
+        else if (currentState == GameState::GAME_OVER)  renderGameOverOverlay();
+        else if (currentState == GameState::PAUSED)     renderPauseOverlay();
     }
-
-  }
-    if (currentState == GameState::SCORES) {
-        window.clear(sf::Color(30, 30, 40));
-        sf::RectangleShape panel(sf::Vector2f(760.f, 500.f));
-        panel.setFillColor(sf::Color(40, 50, 70));
-        panel.setOutlineColor(sf::Color(180, 130, 30));
-        panel.setOutlineThickness(2.f);
-        panel.setPosition(260.f, 50.f);
-        window.draw(panel);
-        window.draw(textScoresTitle);
-        window.draw(textScoresList);
-        window.draw(btnReturnFromScores);
-        window.draw(textReturnFromScores);
-    }
+    if (currentState == GameState::SCORES) renderScoresScreen();
     window.display();
 }
 
@@ -874,61 +881,11 @@ void Engine::run() {
         if (currentState == GameState::PLAYING) {
             update(deltaTime);
 
-            waveTimer += deltaTime;
-            gameTime += deltaTime; //Aktualizacja czasu gry
-
-            // Kiedy minie czas, zrzucamy na gracza całą falę na raz
-            if (waveTimer >= timeBetweenWaves) {
-                spawnWave();
-                currentWave++;   // Zwiększamy poziom trudności
-                waveTimer = 0.f; // Resetujemy zegar do kolejnej fali
-            }
+            gameTime += deltaTime;
+            if(waveManager) waveManager->update(deltaTime);
         }
 
         render();
-    }
-}
-
-void Engine::spawnWave() {
-    int enemiesToSpawn = 8 + (currentWave * 2);
-
-    // Mnożniki
-    float hpM = 1.0f + (currentWave * 0.15f);
-    float speedM = 1.0f + (currentWave * 0.04f);
-
-    //Pozycja startowa to gracz a promień to odległość poza ekranem
-    sf::Vector2f center = player->getPosition();
-    float radius = 700.f;
-
-    //Spawnowanie całej grupy
-    for(int i = 0; i < enemiesToSpawn; ++i) {
-        // Losujemy kąt dookoła gracza (od 0 do 360 stopni i zamieniamy na radiany)
-        float angle = (rand() % 360) * 3.14159f / 180.f;
-
-        //Obliczanie pozycji na okręgu
-        float spawnX = center.x + cos(angle) * radius;
-        float spawnY = center.y + sin(angle) * radius;
-
-        // 4. Dobór wrogów: 40% to zawsze standardowy tłum, reszta to odblokowane potwory
-        EnemyType typ;
-        int typeChance = rand() % 100;
-
-        if (typeChance < 40) {
-            typ = EnemyType::TRUPOJADY;
-        } else {
-            // Z każdą kolejną falą odblokowuje się nowy, groźniejszy typ wroga
-            int unlockedTypes = std::min(currentWave, 6);
-            int specialRoll = rand() % unlockedTypes;
-
-            if (specialRoll == 0) typ = EnemyType::UPIOR;
-            else if (specialRoll == 1) typ = EnemyType::OGROWATE;
-            else if (specialRoll == 2) typ = EnemyType::KAMIKAZE;
-            else if (specialRoll == 3) typ = EnemyType::CIEN;
-            else if (specialRoll == 4) typ = EnemyType::WAMPIR;
-            else if (specialRoll == 5) typ = EnemyType::ZJAWA;
-        }
-
-        gameObjects.push_back(std::make_shared<Enemy>(spawnX, spawnY, typ, player, hpM, speedM));
     }
 }
 
@@ -1120,7 +1077,7 @@ void Engine::drawTerrain() {
 
 void Engine::saveScore(const std::string& name, int score) {
     // Tworzenie folderu jeśli nie istnieje (działa na Windows)
-    system("if not exist assets\\scores mkdir assets\\scores");
+    fs::create_directories("assets/scores");
 
     // Wczytaj istniejące wyniki
     std::vector<std::pair<int, std::string>> scores;
