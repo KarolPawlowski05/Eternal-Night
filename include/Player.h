@@ -3,7 +3,6 @@
 
 #include "GameObject.h"
 #include "PlayerData.h"
-#include "AssetManager.h"
 #include <cmath>
 
 class Player : public GameObject {
@@ -16,6 +15,8 @@ private:
     ProgressionData progression;
     StatsData stats;
     PassiveWeaponsData weapons;
+
+    bool godMode;
 
     // Metody pomocnicze
     void loadTextures();
@@ -85,7 +86,7 @@ public:
     float getFireAuraRadius() const { return weapons.fireAuraRadius; }
 
     bool getHasOrbitingSword() const { return weapons.hasOrbitingSword; }
-    sf::FloatRect getOrbitingSwordBounds() const { return weapons.orbitSwordShape.getGlobalBounds(); }
+    std::vector<sf::FloatRect> getOrbitingSwordsBounds() const;
 
     bool getHasWand() const { return weapons.hasWand; }
     float getWandCooldown() const { return weapons.wandCooldown; }
@@ -95,6 +96,10 @@ public:
     void resetWandTimer() { weapons.wandTimer = 0.f; }
     int getWandProjectiles() const { return weapons.wandProjectiles; }
     int getWandDamageBonus() const { return weapons.wandDamageBonus; }
+
+    // GOD MODE
+    void toggleGodMode() { godMode = !godMode; }
+    bool getGodMode() const { return godMode; }
 
 
 };

@@ -75,6 +75,8 @@ public:
     int getClickedUpgrade(sf::Vector2f pos) const;
 
     const sf::Font& getFont() const { return font; }
+    // Wyświetlanie paska życia bossa
+    void drawBossHealthBar(sf::RenderWindow& window, int currentHp, int maxHp, const std::string& bossName);
 };
 
 #endif

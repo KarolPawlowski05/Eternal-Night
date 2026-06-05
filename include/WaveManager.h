@@ -6,6 +6,7 @@
 #include <memory>
 #include "GameObject.h"
 #include "Enemy.h"
+#include "Boss.h"
 
 class Player;
 
@@ -20,6 +21,11 @@ private:
 
     void spawnWave();
 
+    int bossesSpawned;
+    std::shared_ptr<Boss> activeBoss;
+
+    bool spawningEnabled = true;
+
 public:
     WaveManager(std::shared_ptr<Player> player, std::vector<std::shared_ptr<GameObject>>& objects);
 
@@ -32,6 +38,12 @@ public:
     float getWaveTimer()        const { return waveTimer; }
     float getTimeBetweenWaves() const { return timeBetweenWaves; }
     float getSecondsToNextWave()const { return timeBetweenWaves - waveTimer; }
+    // 0 = Dusiciel, 1 = Zjawa, 2 = Wampir, 3 = Golem
+    void forceSpawnBoss(int bossIndex);
+
+    std::shared_ptr<Boss> getActiveBoss() const { return activeBoss; }
+    void toggleSpawning();
+
 };
 
 #endif

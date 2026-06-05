@@ -2,7 +2,6 @@
 #define PLAYERDATA_H
 
 #include <SFML/Graphics.hpp>
-#include <memory>
 
 // System animacji
 struct AnimationData {
@@ -117,6 +116,7 @@ struct PassiveWeaponsData {
     sf::Sprite orbitSwordShape;
     float orbitAngle;
     float orbitSpeed;
+    int swordCount;
 
     // Różdżka
     bool hasWand;

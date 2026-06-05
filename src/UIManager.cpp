@@ -241,5 +241,44 @@ void UIManager::generateUpgrades() {
         if(i == 0) { textCard1.setString(text); card1.setFillColor(color); }
         else if(i == 1) { textCard2.setString(text); card2.setFillColor(color); }
         else if(i == 2) { textCard3.setString(text); card3.setFillColor(color); }
-    }
+    }    
+}
+
+void UIManager::drawBossHealthBar(sf::RenderWindow& window, int currentHp, int maxHp, const std::string& bossName) {
+    if (currentHp <= 0) return;
+
+    // Tło paska
+    sf::RectangleShape bg(sf::Vector2f(800.f, 25.f));
+    bg.setFillColor(sf::Color(30, 30, 30, 200));
+    bg.setOutlineColor(sf::Color::Black);
+    bg.setOutlineThickness(2.f);
+    bg.setOrigin(400.f, 12.5f);
+    bg.setPosition(640.f, 660.f);
+
+    // Wypełnienie HP (czerwone)
+    float hpPercent = std::max(0.f, static_cast<float>(currentHp) / maxHp);
+    sf::RectangleShape fg(sf::Vector2f(800.f * hpPercent, 25.f));
+    fg.setFillColor(sf::Color(180, 0, 0));
+    fg.setOrigin(400.f, 12.5f);
+    fg.setPosition(640.f, 660.f);
+
+    // Nazwa Bossa
+    sf::Text nameText;
+    nameText.setFont(font);
+    nameText.setString(bossName);
+    nameText.setCharacterSize(24);
+    nameText.setFillColor(sf::Color::White);
+    sf::FloatRect tb = nameText.getLocalBounds();
+    nameText.setOrigin(tb.left + tb.width / 2.f, tb.top + tb.height / 2.f);
+    nameText.setPosition(640.f, 635.f);
+
+    // Rysowanie z użyciem widoku domyślnego żeby pasek się nie ruszał z kamerą
+    sf::View prevView = window.getView();
+    window.setView(window.getDefaultView());
+
+    window.draw(bg);
+    window.draw(fg);
+    window.draw(nameText);
+
+    window.setView(prevView);
 }

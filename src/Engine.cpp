@@ -5,8 +5,6 @@
 #include "Bonus.h"
 #include "Obstacle.h"
 #include "XpCrystal.h"
-#include "DamageNumber.h"
-#include <algorithm>
 #include <cstdlib>
 #include <memory>
 #include <cmath>
@@ -43,6 +41,33 @@ void Engine::handleEvents() {
         // Obsługa debug
         if(event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::F3) {
             debugMode = !debugMode;
+        }
+        // SZYBKI SPAWN KONKRETNEGO BOSSA (Klawisze 1, 2, 3, 4 nad literami)
+        if(event.type == sf::Event::KeyPressed) {
+            if(event.key.code == sf::Keyboard::Num1 && debugMode) {
+                if (waveManager != nullptr) waveManager->forceSpawnBoss(0); // 1 = Korzenny Dusiciel
+            }
+            else if(event.key.code == sf::Keyboard::Num2 && debugMode) {
+                if (waveManager != nullptr) waveManager->forceSpawnBoss(1); // 2 = Zjawa Burzy
+            }
+            else if(event.key.code == sf::Keyboard::Num3 && debugMode) {
+                if (waveManager != nullptr) waveManager->forceSpawnBoss(2); // 3 = Wampir-Książę
+            }
+            else if(event.key.code == sf::Keyboard::Num4 && debugMode) {
+                if (waveManager != nullptr) waveManager->forceSpawnBoss(3); // 4 = Golem Chaosu
+            }
+        }
+        // PRZEŁĄCZNIK SPAWNU MOBÓW (Włącza/Wyłącza zwykłych wrogów)
+        if(event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::N) {
+            if (waveManager != nullptr && debugMode) {
+                waveManager->toggleSpawning();
+            }
+        }
+        // GOD MODE (Nieśmiertelność)
+        if(event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::G) {
+            if (player != nullptr && debugMode) {
+                player->toggleGodMode();
+            }
         }
         // OBSŁUGA MYSZKI W ZALEŻNOŚCI OD EKRANU
         if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left) {
@@ -90,6 +115,15 @@ void Engine::handleEvents() {
                     playerName += static_cast<char>(event.text.unicode);
                 }
                 uiManager.updateNameInput(playerName);
+            }
+            // Obsługa wciśnięcia Enter (zapis do pliku)
+            if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Enter && !playerName.empty()) {
+                int score = static_cast<int>(gameTime * 10) + (player->getEnemiesKilled() * 2);
+
+                // Zapisujemy przez ScoreManagera
+                scoreManager.saveScore(playerName, score);
+
+                nameSaved = true; // Flaga, żeby nie dało się zapisać dwa razy
             }
         }
 
@@ -264,7 +298,10 @@ void Engine::render() {
         // Kamera interfejsu
         window.setView(window.getDefaultView());
         uiManager.renderHUD(window, player, gameTime, waveManager.get());
-
+        if (waveManager && waveManager->getActiveBoss() != nullptr) {
+            auto boss = waveManager->getActiveBoss();
+            uiManager.drawBossHealthBar(window, boss->getHp(), boss->getMaxHp(), boss->getName());
+        }
         if      (currentState == GameState::LEVEL_UP)   uiManager.renderLevelUp(window);
         else if (currentState == GameState::GAME_OVER) {
             int score = static_cast<int>(gameTime * 10) + (player->getEnemiesKilled() * 2);
@@ -342,9 +379,16 @@ void Engine::drawDebugOverlay() {
     // Zasięg podnoszenia
     drawDebugCircle(player->getPosition(), player->getPickupBounds().width / 2.f, sf::Color(80, 80, 255));
 
-    // Orbitujace ostrze
-    if(player->getHasOrbitingSword()) {
-        drawDebugRect(player->getOrbitingSwordBounds(), sf::Color(0, 255, 220));
+    // Orbitujące Ostrza
+    if (player->getHasOrbitingSword()) {
+        for (const auto& bounds : player->getOrbitingSwordsBounds()) {
+            sf::RectangleShape rect(sf::Vector2f(bounds.width, bounds.height));
+            rect.setPosition(bounds.left, bounds.top);
+            rect.setFillColor(sf::Color::Transparent);
+            rect.setOutlineColor(sf::Color::Yellow);
+            rect.setOutlineThickness(1.f);
+            window.draw(rect);
+        }
     }
 
     // Hitbox aury ognia

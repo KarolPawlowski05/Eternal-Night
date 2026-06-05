@@ -4,6 +4,7 @@
 #include "XpCrystal.h"
 #include "Bonus.h"
 #include "Obstacle.h"
+#include "Boss.h"
 #include "DamageNumber.h"
 #include <cmath>
 #include <cstdlib>
@@ -25,7 +26,7 @@ void CollisionSystem::update(std::shared_ptr<Player>& player, std::vector<std::s
         if(proj) {
             if(proj->getIsEnemyOwned()) {
                 if(proj->getBounds().intersects(player->getBounds())) {
-                    player->takeDamage(15);
+                    player->takeDamage(8);
                     proj->destroy();
                 }
             }
@@ -47,6 +48,9 @@ void CollisionSystem::update(std::shared_ptr<Player>& player, std::vector<std::s
                     }
                 }
             }
+
+            // 2. Jeśli wróg zginął od dotyku kamikaze, nie sprawdzaj reszty
+            if(!enemy->isActive()) continue;
 
             // Atak obszarowy gracza
             if(player->getIsAttacking() && player->getAttackBounds().intersects(enemy->getBounds())) {
@@ -81,15 +85,23 @@ void CollisionSystem::update(std::shared_ptr<Player>& player, std::vector<std::s
 
             // Orbitujące Ostrze
             if(player->getHasOrbitingSword()) {
-                if(player->getOrbitingSwordBounds().intersects(enemy->getBounds())) {
-                    bool wasCrit = false;
-                    int dmg = player->getDamage(15, &wasCrit);
-                    int dealt = enemy->takeDamage(dmg, 2);
-                    if(dealt > 0) spawnDamageNumber(enemy->getPosition().x, enemy->getPosition().y, dealt, wasCrit, font, newObjects);
-                    if(!enemy->isActive()) {
-                        player->incrementKills();
-                        player->triggerVampirism();
-                        newObjects.push_back(std::make_shared<XpCrystal>(enemy->getPosition().x, enemy->getPosition().y, enemy->getXpReward()));
+                auto swords = player->getOrbitingSwordsBounds();
+                for (const auto& swordBounds : swords) {
+                    // Sprawdź czy enemy nadal istnieje (nie został usunięty w tej samej pętli)
+                    if (enemy && enemy->isActive()) {
+                        if(swordBounds.intersects(enemy->getBounds())) {
+                            bool wasCrit = false;
+                            int dmg = player->getDamage(15, &wasCrit);
+                            int dealt = enemy->takeDamage(dmg, 2);
+                            if(dealt > 0) spawnDamageNumber(enemy->getPosition().x, enemy->getPosition().y, dealt, wasCrit, font, newObjects);
+
+                            if(!enemy->isActive()) {
+                                player->incrementKills();
+                                player->triggerVampirism();
+                                newObjects.push_back(std::make_shared<XpCrystal>(enemy->getPosition().x, enemy->getPosition().y, enemy->getXpReward()));
+                            }
+                            break; // Wróg dostał strzał, koniec sprawdzania innych mieczy dla tego wroga
+                        }
                     }
                 }
             }
@@ -137,6 +149,7 @@ void CollisionSystem::update(std::shared_ptr<Player>& player, std::vector<std::s
                 }
             }
 
+
             // Rzut Głazem
             if(enemy->checkAndResetThrow()) {
                 sf::Vector2f dir = player->getPosition() - enemy->getPosition();
@@ -145,6 +158,73 @@ void CollisionSystem::update(std::shared_ptr<Player>& player, std::vector<std::s
                     dir /= length;
                     newObjects.push_back(std::make_shared<Projectile>(enemy->getPosition().x, enemy->getPosition().y, dir, 200.0f, true));
                 }
+            }
+        }
+        // DODANA SEKCJA: KOLIZJE BOSSA
+        auto boss = dynamic_cast<Boss*>(obj.get());
+        if(boss) {
+            //  Gracz - Boss (Obrażenia kontaktowe)
+            if(player->getBounds().intersects(boss->getBounds())) {
+                player->takeDamage(10);
+            }
+
+            //  Atak obszarowy gracza - Boss
+            if(player->getIsAttacking() && player->getAttackBounds().intersects(boss->getBounds())) {
+                bool wasCrit = false;
+                int dmg = player->getDamage(25, &wasCrit);
+                int dealt = boss->takeDamage(dmg);
+                if(dealt > 0) spawnDamageNumber(boss->getPosition().x, boss->getPosition().y, dealt, wasCrit, font, newObjects);
+            }
+
+            //  Aura Ognia - Boss
+            if(player->getHasFireAura()) {
+                float dx = boss->getPosition().x - player->getPosition().x;
+                float dy = boss->getPosition().y - player->getPosition().y;
+                float dist = std::sqrt(dx * dx + dy * dy);
+                if(dist <= player->getFireAuraRadius()) {
+                    bool wasCrit = false;
+                    int dmg = player->getDamage(3, &wasCrit);
+                    int dealt = boss->takeDamage(dmg);
+                    if(dealt > 0) spawnDamageNumber(boss->getPosition().x, boss->getPosition().y, dealt, wasCrit, font, newObjects);
+                }
+            }
+
+            // Orbitujące Ostrze - Boss
+            if(player->getHasOrbitingSword()) {
+                for (const auto& swordBounds : player->getOrbitingSwordsBounds()) {
+                    if(swordBounds.intersects(boss->getBounds())) {
+                        bool wasCrit = false;
+                        int dmg = player->getDamage(15, &wasCrit);
+                        int dealt = boss->takeDamage(dmg, 2); // Typ 2 = Miecz
+                        if(dealt > 0) spawnDamageNumber(boss->getPosition().x, boss->getPosition().y, dealt, wasCrit, font, newObjects);
+                        break; // Uderzenie jednym mieczem wystarczy na klatkę
+                    }
+                }
+            }
+
+            //  Kusza i Różdżka - Boss
+            for(auto& otherObj : gameObjects) {
+                if(!otherObj->isActive()) continue;
+                auto projectile = dynamic_cast<Projectile*>(otherObj.get());
+                if(projectile && !projectile->getIsEnemyOwned()) {
+                    if(projectile->getBounds().intersects(boss->getBounds())) {
+                        bool wasCrit = false;
+                        int baseDmg = projectile->getIsWand() ? (35 + player->getWandDamageBonus()) : 50;
+                        int dmg = player->getDamage(baseDmg, &wasCrit);
+
+                        int dealt = boss->takeDamage(dmg);
+                        if(dealt > 0) spawnDamageNumber(boss->getPosition().x, boss->getPosition().y, dealt, wasCrit, font, newObjects);
+
+                        projectile->destroy();
+                    }
+                }
+            }
+
+            // Sprawdzenie czy boss zginął
+            if(!boss->isActive()) {
+                player->incrementKills();
+                player->triggerVampirism();
+                newObjects.push_back(std::make_shared<XpCrystal>(boss->getPosition().x, boss->getPosition().y, 750));
             }
         }
 

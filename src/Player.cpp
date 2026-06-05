@@ -1,11 +1,12 @@
 #include "Player.h"
 #include "Config.h"
 #include <algorithm>
+#include<AssetManager.h>
 
 // Konstruktor
 Player::Player(float x, float y)
     : GameObject(x, y), animation(), combat(), movement(), health(),
-    progression(), stats(), weapons() {
+    progression(), stats(), weapons(), godMode(false) {
 
     loadTextures();
 
@@ -60,9 +61,14 @@ Player::Player(float x, float y)
     auto swordTex = AssetManager::loadTexture("assets/player/attacks/orbitingSword/sword.png");
     if(swordTex) {
         swordTex->setSmooth(false);
-        weapons.orbitSwordShape.setTexture(*swordTex);
+        weapons.orbitSwordTexture = *swordTex;
+        weapons.orbitSwordShape.setTexture(weapons.orbitSwordTexture);
+
         sf::FloatRect lb = weapons.orbitSwordShape.getLocalBounds();
         weapons.orbitSwordShape.setOrigin(lb.width / 2.f, lb.height / 2.f);
+    } else {
+        // Loguj błąd, ale nie crashuj gry
+        printf("Blad: Nie znaleziono tekstury miecza!\n");
     }
 }
 
@@ -169,6 +175,9 @@ void Player::updateAnimation(const sf::Vector2f& movement, bool isMoving, float 
 }
 
 void Player::takeDamage(int amount) {
+    // Godmode odpornosc na obrażenia
+    if (godMode) return;
+
     // Jeśli gracz robi unik lub ma aktywną nietykalność, nie otrzymuje obrażeń
     if(!movement.isDashing && health.invincibilityTimer <= 0.f) {
 
@@ -350,16 +359,17 @@ void Player::update(float deltaTime) {
     if (weapons.hasOrbitingSword) {
         weapons.orbitAngle += weapons.orbitSpeed * deltaTime;
         if (weapons.orbitAngle >= 360.f) weapons.orbitAngle -= 360.f;
-
-        float rad = weapons.orbitAngle * 3.14159f / 180.f;
-        float orbitDistance = 100.f; // Jak daleko od gracza lata miecz
-        weapons.orbitSwordShape.setPosition(position.x + std::cos(rad) * orbitDistance, position.y + std::sin(rad) * orbitDistance);
-        weapons.orbitSwordShape.setRotation(weapons.orbitAngle - 45.f); // Ostrze zwrócone w stronę lotu
     }
 
     // Pasek HP
     float hpPercent = std::max(0.f, static_cast<float>(health.hp) / health.maxHp);
     health.hpBarForeground.setSize(sf::Vector2f(50.f * hpPercent, 6.f));
+    // ZMIANA KOLORU DLA GOD MODE
+    if (godMode) {
+        health.hpBarForeground.setFillColor(sf::Color(255, 215, 0)); // Złoty
+    } else {
+        health.hpBarForeground.setFillColor(sf::Color::Green); // Normalny zielony
+    }
     health.hpBarBackground.setPosition(position.x, position.y + 30.f);
     health.hpBarForeground.setPosition(position.x, position.y + 30.f);
 
@@ -384,7 +394,20 @@ void Player::draw(sf::RenderWindow& window) {
     window.draw(health.specialCooldownBarBackground);
     window.draw(health.specialCooldownBarForeground);
     if (weapons.hasFireAura) window.draw(weapons.fireAuraShape);
-    if (weapons.hasOrbitingSword) window.draw(weapons.orbitSwordShape);
+    if (weapons.hasOrbitingSword) {
+        float angleStep = 360.f / weapons.swordCount; // Kąt między poszczególnymi mieczami
+        float orbitDistance = 100.f;
+
+        for (int i = 0; i < weapons.swordCount; ++i) {
+            float currentAngle = weapons.orbitAngle + (i * angleStep);
+            float rad = currentAngle * 3.14159f / 180.f;
+
+            weapons.orbitSwordShape.setPosition(position.x + std::cos(rad) * orbitDistance, position.y + std::sin(rad) * orbitDistance);
+            weapons.orbitSwordShape.setRotation(currentAngle - 45.f);
+
+            window.draw(weapons.orbitSwordShape);
+        }
+    }
     if(animation.showAttackAnim) {
         window.draw(animation.attackSprite);
     } else {
@@ -422,8 +445,13 @@ void Player::applyUpgrade(int choice) {
         else { weapons.fireAuraRadius += 25.f; weapons.fireAuraShape.setRadius(weapons.fireAuraRadius); weapons.fireAuraShape.setOrigin(weapons.fireAuraRadius, weapons.fireAuraRadius); }
         break;
     case 12: // ORBITUJĄCE OSTRZE
-        if (!weapons.hasOrbitingSword) { weapons.hasOrbitingSword = true; }
-        else { weapons.orbitSpeed += 80.f; } // Miecz lata coraz szybciej
+        if (!weapons.hasOrbitingSword) {
+            weapons.hasOrbitingSword = true;
+            weapons.swordCount = 1; // Pierwszy miecz
+        } else {
+            weapons.swordCount++; // Dodaje kolejny miecz do okręgu
+            weapons.orbitSpeed += 10.f; // Lekko przyspiesza przy okazji
+        }
         break;
     case 13: // RÓŻDŻKA
         if (!weapons.hasWand) { weapons.hasWand = true; }
@@ -459,4 +487,25 @@ void Player::triggerVampirism() {
             heal(2); // Drobne uleczenie po zabójstwie
         }
     }
+}
+std::vector<sf::FloatRect> Player::getOrbitingSwordsBounds() const {
+    std::vector<sf::FloatRect> bounds;
+
+    if (!weapons.hasOrbitingSword || weapons.swordCount == 0 || weapons.orbitSwordShape.getTexture() == nullptr)
+        return bounds;
+
+    float angleStep = 360.f / weapons.swordCount;
+    float orbitDistance = 100.f;
+
+    for (int i = 0; i < weapons.swordCount; ++i) {
+        float currentAngle = weapons.orbitAngle + (i * angleStep);
+        float rad = currentAngle * 3.14159f / 180.f;
+
+        sf::Sprite tempSprite = weapons.orbitSwordShape;
+        tempSprite.setPosition(position.x + std::cos(rad) * orbitDistance, position.y + std::sin(rad) * orbitDistance);
+        tempSprite.setRotation(currentAngle - 45.f);
+
+        bounds.push_back(tempSprite.getGlobalBounds());
+    }
+    return bounds;
 }
