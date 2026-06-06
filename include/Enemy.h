@@ -9,7 +9,18 @@ enum class EnemyType {TRUPOJADY, UPIOR, OGROWATE, KAMIKAZE, CIEN, WAMPIR, ZJAWA}
 
 class Enemy : public GameObject {
 private:
-    sf::RectangleShape sprite; //Wizualna reprezentacja przeciwnika
+    // Wizualizacja
+    sf::RectangleShape fallbackShape; // Kształt zapasowy
+    sf::Sprite enemySprite; // Sprite z teksturą
+    std::shared_ptr<sf::Texture> enemyTexture;
+    bool textureLoaded;
+    float baseScale; // Skala dopasowująca sprite do rozmiaru hitboxa
+    float enemySz; // Rozmiar hitboxa z konfiga (do obliczeń skali)
+    float pulseTimer; // Timer do efektów pulsujących
+    bool facingLeft; // Czy sprite jest odwrócony
+    // Oblicza i aplikuje kolor/skalę/flip sprite'a na podstawie bieżącego stanu
+    void updateSpriteVisuals();
+
     float speed; //Predkosc wroga
     EnemyType type; //Typ wroga
     std::shared_ptr<Player> target;
@@ -25,6 +36,7 @@ private:
     sf::RectangleShape hpBarForeground; // Czerwony pasek HP
     float baseSpeed;
     float abilityTimer = 0.f;
+
     bool isKamikaze;
     bool isGhost;
     bool isVampire;
@@ -43,8 +55,13 @@ public:
     // Zwraca faktycznie zadane obrażenia (0 = zablokowane przez cooldown)
     int takeDamage(int amount, int damageType = 0);
     int getXpReward() const; // Zwraca ilość XP do wypadnięcia
-    void setPosition(sf::Vector2f newPos) { position = newPos; sprite.setPosition(position); }
+    void setPosition(sf::Vector2f newPos) {
+        position = newPos;
+        enemySprite.setPosition(position);
+        fallbackShape.setPosition(position);
+    }
     void heal(int amount) { hp += amount; if(hp > maxHp) hp = maxHp; }
+
     bool getIsKamikaze() const { return isKamikaze; }
     bool getIsGhost() const { return isGhost; }
     bool getIsVampire() const { return isVampire; }

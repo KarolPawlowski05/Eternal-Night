@@ -39,8 +39,9 @@ namespace EnemyConfig {
     struct EnemyStats {
         float baseSpeed;
         int baseHp;
-        sf::Color color;
-        float size;
+        sf::Color color;        // Kolor zapasowego kształty (gdy nie ma tekstury)
+        float size;             // Rozmiar hitboxa
+        const char* texturePath;// Ścieżka do pliku sprite'a
     };
 
     extern std::map<int, EnemyStats> ENEMY_STATS;
