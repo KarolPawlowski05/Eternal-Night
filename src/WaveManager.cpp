@@ -22,6 +22,7 @@ bool WaveManager::update(float deltaTime) {
     bool waveSpawned = false;
     if (waveTimer >= timeBetweenWaves) {
         spawnWave();
+        AssetManager::playSound("assets/audio/sfx/waveStart.wav");
         //SYSTEM SPAWNOWANIA BOSSÓW NA KONKRETNYCH FALACH
         bool spawnBoss = false;
         BossType bType = BossType::ROOT_STRANGLER;
@@ -53,6 +54,7 @@ bool WaveManager::update(float deltaTime) {
 
             activeBoss = std::make_shared<Boss>(spawnX, spawnY, bType, player, scaling);
             gameObjects.push_back(activeBoss);
+            AssetManager::playSound("assets/audio/sfx/bossSpawn.wav");
         }
         currentWave++;
         waveTimer = 0.f;

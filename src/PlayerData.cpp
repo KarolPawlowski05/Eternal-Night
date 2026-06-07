@@ -17,7 +17,7 @@ MovementData::MovementData()
     : speed(PlayerConfig::BASE_SPEED), lastDirection(0.f, -1.f),
     dashSpeed(PlayerConfig::DASH_SPEED), dashCooldown(PlayerConfig::DASH_COOLDOWN),
     dashTimer(PlayerConfig::DASH_COOLDOWN), dashDuration(PlayerConfig::DASH_DURATION),
-    dashDurationTimer(0.f), isDashing(false) {}
+    dashDurationTimer(0.f), isDashing(false), footstepTimer(0.f), footstepInterval(0.41f), footstepVariant(0) {}
 
 HealthData::HealthData()
     : hp(PlayerConfig::BASE_HP), maxHp(PlayerConfig::BASE_HP),

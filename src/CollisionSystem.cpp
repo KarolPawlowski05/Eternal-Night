@@ -11,6 +11,9 @@
 
 void CollisionSystem::spawnDamageNumber(float x, float y, int damage, bool isCrit, const sf::Font& font, std::vector<std::shared_ptr<GameObject>>& newObjects) {
     if(damage <= 0) return;
+    if(isCrit) {
+        AssetManager::playSound("assets/audio/sfx/critHit.wav");
+    }
     float offsetX = static_cast<float>((rand() % 30) - 15);
     newObjects.push_back(std::make_shared<DamageNumber>(x + offsetX, y - 20.f, damage, isCrit, font));
 }
@@ -160,7 +163,7 @@ void CollisionSystem::update(std::shared_ptr<Player>& player, std::vector<std::s
                 }
             }
         }
-        // DODANA SEKCJA: KOLIZJE BOSSA
+        // KOLIZJE BOSSA
         auto boss = dynamic_cast<Boss*>(obj.get());
         if(boss) {
             //  Gracz - Boss (Obrażenia kontaktowe)
@@ -225,6 +228,8 @@ void CollisionSystem::update(std::shared_ptr<Player>& player, std::vector<std::s
                 player->incrementKills();
                 player->triggerVampirism();
                 newObjects.push_back(std::make_shared<XpCrystal>(boss->getPosition().x, boss->getPosition().y, 750));
+                AssetManager::playSound("assets/audio/sfx/bossDeath.wav");
+                AssetManager::playMusic("assets/audio/music/bgMusic.ogg");
             }
         }
 
@@ -251,7 +256,7 @@ void CollisionSystem::update(std::shared_ptr<Player>& player, std::vector<std::s
         if(bonus) {
             if(player->getPickupBounds().intersects(bonus->getBounds())) {
                 if(bonus->getType() == BonusType::POTION) {
-                    player->heal(20);
+                    player->healFromPotion(20);
                 }
                 bonus->destroy();
             }

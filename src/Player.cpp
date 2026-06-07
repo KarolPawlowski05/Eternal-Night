@@ -192,10 +192,20 @@ void Player::takeDamage(int amount) {
         health.hp -= finalDamage;
         health.invincibilityTimer = 1.0f;
         if(health.hp < 0) health.hp = 0;
+
+        // Dźwięki
+        if(health.hp <= 0) {
+            // Dźwięk śmierci
+            AssetManager::playSound("assets/audio/sfx/playerDeath.wav");
+            AssetManager::stopMusic();
+        } else {
+            // Zwykłe obrażenia
+            AssetManager::playSound("assets/audio/sfx/playerHit.wav", 20.f);
+        }
     }
 }
 
-// Uruchamia hitbox i animacje
+// Uruchamia hitbox, animacje i dźwięk
 void Player::castAttack() {
     // Hitbox aktywny
     combat.isAttacking = true;
@@ -211,8 +221,13 @@ void Player::castAttack() {
 
     // Ustawienie odpowiedniej tekstury (1 lub 2)
     if(animation.texturesLoaded && animation.attackTextures[animation.attackCombo][dir]) {
-        animation.attackSprite.setTexture(*animation.attackTextures[animation.attackCombo][dir]); // Dodana *
+        animation.attackSprite.setTexture(*animation.attackTextures[animation.attackCombo][dir]);
     }
+
+    // Dźwięk
+    const char* swordSfx = (animation.attackCombo == 0) ? "assets/audio/sfx/swordAttack1.wav" : "assets/audio/sfx/swordAttack2.wav";
+    AssetManager::playSound(swordSfx, 20.f);
+
     animation.attackCombo = (animation.attackCombo + 1) % 2; // Zmiana wariantu
 
     // Reset animacji
@@ -294,6 +309,8 @@ void Player::update(float deltaTime) {
     if(sf::Keyboard::isKeyPressed(sf::Keyboard::R) && combat.specialTimer >= combat.specialCooldown) {
         combat.wantsToShootSpecial = true;
         combat.specialTimer = 0.f;
+        // Dźwięk
+        AssetManager::playSound("assets/audio/sfx/crossbow.wav");
     }
 
     // Unik
@@ -301,6 +318,7 @@ void Player::update(float deltaTime) {
         movement.isDashing = true;
         movement.dashDurationTimer = movement.dashDuration;
         movement.dashTimer = 0.f;
+        AssetManager::playSound("assets/audio/sfx/dash.wav");
     }
 
     // Ruch gracza
@@ -339,6 +357,24 @@ void Player::update(float deltaTime) {
             // Do animacji
             isMoving = true;
         }
+    }
+
+    // Dźwięki
+    if(isMoving) {
+        movement.footstepTimer += deltaTime;
+
+        if(movement.footstepTimer >= movement.footstepInterval) {
+            if(movement.footstepVariant == 0) {
+                AssetManager::playSound("assets/audio/sfx/step1.wav", 2.f);
+                movement.footstepVariant = 1;
+            } else {
+                AssetManager::playSound("assets/audio/sfx/step2.wav", 2.f);
+                movement.footstepVariant = 0;
+            }
+            movement.footstepTimer = 0.f;
+        }
+    } else {
+        movement.footstepTimer = movement.footstepInterval;
     }
 
     // Animacja
@@ -425,6 +461,9 @@ sf::FloatRect Player::getAttackBounds() const {
 
 void Player::addXp(int amount) {
     progression.xp += amount;
+
+    // Dźwięk
+    AssetManager::playSound("assets/audio/sfx/getXpCrystal.wav", 5.f);
 }
 
 void Player::applyUpgrade(int choice) {
@@ -470,6 +509,11 @@ void Player::heal(int amount) {
     if(health.hp > health.maxHp) {
         health.hp = health.maxHp;
     }
+}
+
+void Player::healFromPotion(int amount) {
+    heal(amount);
+    AssetManager::playSound("assets/audio/sfx/potion.wav");
 }
 
 int Player::getDamage(int baseDamage, bool* wasCrit) const {

@@ -2,6 +2,7 @@
 #define PLAYERDATA_H
 
 #include <SFML/Graphics.hpp>
+#include <SFML/Audio.hpp>
 
 // System animacji
 struct AnimationData {
@@ -57,6 +58,11 @@ struct MovementData {
     float dashDuration;
     float dashDurationTimer;
     bool isDashing;
+
+    // Dźwięk
+    float footstepTimer;
+    float footstepInterval; // Czas między krokami
+    int footstepVariant;
 
     MovementData();
 };

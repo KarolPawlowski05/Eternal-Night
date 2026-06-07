@@ -156,7 +156,12 @@ int Enemy::takeDamage(int amount, int damageType) {
     }
 
     if (tookDamage) {
-        if (hp <= 0) destroy();
+        if (hp <= 0) {
+            destroy();
+            AssetManager::playSound("assets/audio/sfx/EnemyDied.wav");
+        } else {
+            AssetManager::playSound("assets/audio/sfx/EnemyHit.wav");
+        }
         return amount;
     }
     return 0; // Zablokowane przez cooldown

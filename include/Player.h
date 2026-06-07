@@ -3,6 +3,7 @@
 
 #include "GameObject.h"
 #include "PlayerData.h"
+#include "AssetManager.h"
 #include <cmath>
 
 class Player : public GameObject {
@@ -33,6 +34,7 @@ public:
     // HP
     void takeDamage(int amount);
     void heal(int amount);
+    void healFromPotion(int amount);
     int getHp() const { return health.hp; }
 
     // Walka
@@ -56,6 +58,7 @@ public:
         progression.xp -= progression.maxXp;
         progression.level++;
         progression.maxXp = static_cast<int>(progression.maxXp * 1.30f);
+        AssetManager::playSound("assets/audio/sfx/levelUp.wav");
     }
     void applyUpgrade(int choice);
     int getLevel() const { return progression.level; }

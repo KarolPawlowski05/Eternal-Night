@@ -75,23 +75,29 @@ void Engine::handleEvents() {
 
             if (currentState == GameState::MAIN_MENU) {
                 if (uiManager.isStartClicked(mousePos)) {
+                    AssetManager::playSound("assets/audio/sfx/buttonClick.wav");
                     resetGame();
                     currentState = GameState::PLAYING;
                 } else if (uiManager.isQuitClicked(mousePos)) {
+                    AssetManager::playSound("assets/audio/sfx/buttonClick.wav");
                     window.close();
                 } else if (uiManager.isScoresClicked(mousePos)) {
+                    AssetManager::playSound("assets/audio/sfx/buttonClick.wav");
                     currentState = GameState::SCORES;
                 }
             }
             else if (currentState == GameState::PAUSED) {
                 if (uiManager.isResumeClicked(mousePos)) {
+                    AssetManager::playSound("assets/audio/sfx/buttonClick.wav");
                     currentState = GameState::PLAYING;
                 } else if (uiManager.isPauseReturnClicked(mousePos)) {
+                    AssetManager::playSound("assets/audio/sfx/buttonClick.wav");
                     currentState = GameState::MAIN_MENU;
                 }
             }
             else if (currentState == GameState::GAME_OVER) {
                 if (uiManager.isGameOverReturnClicked(mousePos)) {
+                    AssetManager::playSound("assets/audio/sfx/buttonClick.wav");
                     currentState = GameState::MAIN_MENU;
                     playerName = "";
                     nameSaved = false;
@@ -100,6 +106,7 @@ void Engine::handleEvents() {
             else if (currentState == GameState::LEVEL_UP) {
                 int upgrade = uiManager.getClickedUpgrade(mousePos);
                 if (upgrade != -1) {
+                    AssetManager::playSound("assets/audio/sfx/upgradeSelect.wav");
                     player->applyUpgrade(upgrade);
                     currentState = GameState::PLAYING;
                 }
@@ -190,6 +197,9 @@ void Engine::resetGame() {
         // Znalazło bezpieczne miejsce, dodajemy miksturę na mapę
         entityManager.addEntity(newPotion);
     }
+
+    // Muzyka
+    AssetManager::playMusic("assets/audio/music/bgMusic.ogg");
 }
 
 void Engine::update(float deltaTime) {
@@ -222,6 +232,7 @@ void Engine::update(float deltaTime) {
         }
 
         if (closestEnemy && closestDist < 600.f) {
+            AssetManager::playSound("assets/audio/sfx/wandShoot.wav");
             int count = player->getWandProjectiles();
             for (int i = 0; i < count; i++) {
                 // Lekkie losowe rozproszenie dla wielu pocisków
@@ -260,6 +271,8 @@ void Engine::update(float deltaTime) {
     }
 
     if(player->getHp() <= 0) {
+        AssetManager::playSound("assets/audio/sfx/gameOver.wav");
+        AssetManager::stopMusic();
         currentState = GameState::GAME_OVER;
     }
 
@@ -299,9 +312,13 @@ void Engine::render() {
         window.setView(window.getDefaultView());
         uiManager.renderHUD(window, player, gameTime, waveManager.get());
         if (waveManager && waveManager->getActiveBoss() != nullptr) {
+            AssetManager::playMusic("assets/audio/music/bossMusic.ogg");
             auto boss = waveManager->getActiveBoss();
             uiManager.drawBossHealthBar(window, boss->getHp(), boss->getMaxHp(), boss->getName());
+        } else {
+            AssetManager::playMusic("assets/audio/music/bgMusic.ogg");
         }
+
         if      (currentState == GameState::LEVEL_UP)   uiManager.renderLevelUp(window);
         else if (currentState == GameState::GAME_OVER) {
             int score = static_cast<int>(gameTime * 10) + (player->getEnemiesKilled() * 2);
