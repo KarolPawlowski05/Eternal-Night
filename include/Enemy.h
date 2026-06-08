@@ -6,6 +6,11 @@
 class Player;
 
 enum class EnemyType {TRUPOJADY, UPIOR, OGROWATE, KAMIKAZE, CIEN, WAMPIR, ZJAWA}; //Typy wrogow
+//Definicja możliwych stanów dla wrogów
+enum class EnemyState {
+    CHASING,        // Standardowy pościg za graczem
+    SPECIAL_ACTION  // Wykonywanie unikalnej umiejętności (szarża, znikanie, rzut głazem itp.)
+};
 
 class Enemy : public GameObject {
 private:
@@ -24,6 +29,8 @@ private:
     float speed; //Predkosc wroga
     EnemyType type; //Typ wroga
     std::shared_ptr<Player> target;
+    EnemyState currentState; //Przechowuje obecny stan tego przeciwnika
+    sf::Vector2f velocity{0.f, 0.f}; // Płynny wektor ruchu
 
     int hp;
     int maxHp;
@@ -44,6 +51,11 @@ private:
     bool isFaded = false;
     bool isBatForm = false;
     bool readyToThrow = false;
+
+    sf::Vector2f externalForce{0.f, 0.f}; //Siła odpychania z zewnątrz
+    sf::Vector2f dashDir; // Zapisany wektor kierunku szarży
+    sf::Vector2f pathDir{0.f, 0.f}; // Zapisany wektor algorytmu A*
+    bool hasPath = false;           // Czy wróg znajduje się na siatce algorytmu
 public:
     Enemy(float x, float y, EnemyType type, std::shared_ptr<Player> player, float hpMult = 1.0f, float speedMult = 1.0f);
 
@@ -69,6 +81,9 @@ public:
     // Gettery potrzebne dla silnika
     bool getIsFaded() const { return isFaded; }
     bool checkAndResetThrow() { if(readyToThrow) { readyToThrow = false; return true; } return false; }
+    void addForce(const sf::Vector2f& force) { externalForce += force; }
+    void setPathDir(sf::Vector2f dir) { pathDir = dir; hasPath = true; }
+    void clearPathDir() { hasPath = false; }
 };
 
 #endif

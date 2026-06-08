@@ -20,6 +20,22 @@ Obstacle::Obstacle(float x, float y, ObstacleType obsType) : GameObject(x, y), t
             sprite.setPosition(position);
         }
     }
+    // 1. LOSOWA SKALA (od 0.7x do 1.3x)
+    float randomScale = 0.7f + static_cast<float>(rand()) / (static_cast<float>(RAND_MAX / 0.6f));
+    sprite.setScale(randomScale, randomScale);
+
+    // 2. LOSOWY ODCIEŃ (Tinting)
+    if (type == ObstacleType::TREE || type == ObstacleType::BUSH) {
+        // Drzewa i krzaki: manipulujemy odcieniami zieleni
+        sf::Uint8 r = 180 + rand() % 75; // 180-255
+        sf::Uint8 g = 200 + rand() % 55; // 200-255 (zawsze dominująca zieleń)
+        sf::Uint8 b = 180 + rand() % 75; // 180-255
+        sprite.setColor(sf::Color(r, g, b));
+    } else if (type == ObstacleType::ROCK) {
+        // Skały: manipulujemy szarościami i jasnością
+        sf::Uint8 shade = 150 + rand() % 105; // 150-255
+        sprite.setColor(sf::Color(shade, shade, shade));
+    }
 
     // Jeśli sie nie wczyta
     if(!textureLoaded) {

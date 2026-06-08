@@ -8,6 +8,8 @@
 #include "DamageNumber.h"
 #include <cmath>
 #include <cstdlib>
+#include <queue>
+#include <algorithm>
 
 void CollisionSystem::spawnDamageNumber(float x, float y, int damage, bool isCrit, const sf::Font& font, std::vector<std::shared_ptr<GameObject>>& newObjects) {
     if(damage <= 0) return;
@@ -135,18 +137,19 @@ void CollisionSystem::update(std::shared_ptr<Player>& player, std::vector<std::s
                 for(auto& otherObj : gameObjects) {
                     if(!otherObj->isActive() || obj == otherObj) continue;
                     auto otherEnemy = dynamic_cast<Enemy*>(otherObj.get());
-                    if(otherEnemy) {
-                        sf::FloatRect intersection;
-                        if(enemy->getBounds().intersects(otherEnemy->getBounds(), intersection)) {
-                            sf::Vector2f pos = enemy->getPosition();
-                            if(intersection.width < intersection.height) {
-                                if(enemy->getBounds().left < otherEnemy->getBounds().left) pos.x -= intersection.width / 2.f;
-                                else pos.x += intersection.width / 2.f;
-                            } else {
-                                if(enemy->getBounds().top < otherEnemy->getBounds().top) pos.y -= intersection.height / 2.f;
-                                else pos.y += intersection.height / 2.f;
-                            }
-                            enemy->setPosition(pos);
+                    if(otherEnemy && !otherEnemy->getIsGhost()) {
+
+                        sf::Vector2f pos1 = enemy->getPosition();
+                        sf::Vector2f pos2 = otherEnemy->getPosition();
+                        float dx = pos1.x - pos2.x;
+                        float dy = pos1.y - pos2.y;
+                        float distSq = dx*dx + dy*dy;
+                        float minDist = 35.f; // Minimalny odstęp między potworami
+
+                        if(distSq > 0 && distSq < minDist * minDist) {
+                            float dist = std::sqrt(distSq);
+                            float force = (minDist - dist) * 15.0f; // Czym bliżej, tym mocniej odpycha
+                            enemy->addForce(sf::Vector2f((dx/dist) * force, (dy/dist) * force));
                         }
                     }
                 }
@@ -265,43 +268,57 @@ void CollisionSystem::update(std::shared_ptr<Player>& player, std::vector<std::s
         // PRZESZKODY
         auto obstacle = dynamic_cast<Obstacle*>(obj.get());
         if(obstacle) {
-            sf::FloatRect obsBounds = obstacle->getBounds();
-            sf::FloatRect intersection;
+            sf::FloatRect texBounds = obstacle->getBounds();
 
-            // Gracz - Przeszkoda
-            if(player->getBounds().intersects(obsBounds, intersection)) {
+            //Hitbox to teraz zaledwie dół (np. sam pień drzewa).
+            sf::FloatRect obsBounds(texBounds.left + texBounds.width*0.2f,
+                                    texBounds.top + texBounds.height*0.6f,
+                                    texBounds.width*0.6f,
+                                    texBounds.height*0.3f);
+
+            float ocx = obsBounds.left + obsBounds.width/2.f;
+            float ocy = obsBounds.top + obsBounds.height/2.f;
+
+            //KOLIZJA GRACZ PRZESZKODA
+            sf::FloatRect intersect;
+            if(player->getBounds().intersects(obsBounds, intersect)) {
                 sf::Vector2f newPos = player->getPosition();
-                if(intersection.width < intersection.height) {
-                    if(player->getBounds().left < obsBounds.left) newPos.x -= intersection.width;
-                    else newPos.x += intersection.width;
+                float pcx = player->getBounds().left + player->getBounds().width/2.f;
+                float pcy = player->getBounds().top + player->getBounds().height/2.f;
+
+                if(intersect.width < intersect.height) {
+                    if(pcx < ocx) newPos.x -= intersect.width;
+                    else newPos.x += intersect.width;
                 } else {
-                    if(player->getBounds().top < obsBounds.top) newPos.y -= intersection.height;
-                    else newPos.y += intersection.height;
+                    if(pcy < ocy) newPos.y -= intersect.height;
+                    else newPos.y += intersect.height;
                 }
                 player->setPosition(newPos);
             }
-
             // Wróg - Przeszkoda
             for(auto& otherObj : gameObjects) {
                 if(!otherObj->isActive()) continue;
                 auto otherEnemy = dynamic_cast<Enemy*>(otherObj.get());
                 if(otherEnemy && !otherEnemy->getIsGhost()) {
-                    sf::FloatRect enemyIntersection;
-                    if(otherEnemy->getBounds().intersects(obsBounds, enemyIntersection)) {
-                        sf::Vector2f newEnemyPos = otherEnemy->getPosition();
-                        if(enemyIntersection.width < enemyIntersection.height) {
-                            if(otherEnemy->getBounds().left < obsBounds.left) newEnemyPos.x -= enemyIntersection.width;
-                            else newEnemyPos.x += enemyIntersection.width;
+                    // Sztywne wypychanie gwarantuje płynne opływanie krawędzi bez trzęsienia
+                    if(otherEnemy->getBounds().intersects(obsBounds, intersect)) {
+                        sf::Vector2f newPos = otherEnemy->getPosition();
+                        float cx = otherEnemy->getBounds().left + otherEnemy->getBounds().width/2.f;
+                        float cy = otherEnemy->getBounds().top + otherEnemy->getBounds().height/2.f;
+
+                        if(intersect.width < intersect.height) {
+                            if(cx < ocx) newPos.x -= intersect.width;
+                            else newPos.x += intersect.width;
                         } else {
-                            if(otherEnemy->getBounds().top < obsBounds.top) newEnemyPos.y -= enemyIntersection.height;
-                            else newEnemyPos.y += enemyIntersection.height;
+                            if(cy < ocy) newPos.y -= intersect.height;
+                            else newPos.y += intersect.height;
                         }
-                        otherEnemy->setPosition(newEnemyPos);
+                        otherEnemy->setPosition(newPos); // Aplikuje korektę od razu
                     }
                 }
             }
         }
-        }
+    }
 
     // Dodanie nowo powstałych obiektów (np. kryształów xp i obrażeń) do głównego wektora
     for(auto& newObj : newObjects) {

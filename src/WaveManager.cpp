@@ -18,17 +18,35 @@ void WaveManager::reset() {
 }
 
 bool WaveManager::update(float deltaTime) {
-    waveTimer += deltaTime;
     bool waveSpawned = false;
+
+    //WALKA Z BOSSEM
+    if (activeBoss != nullptr) {
+
+        if (!activeBoss->isActive()) {
+            activeBoss = nullptr;
+            waveTimer = timeBetweenWaves;
+        } else {
+            auto bossSpawns = activeBoss->extractSpawns();
+            for (auto& spawnedObject : bossSpawns) {
+                gameObjects.push_back(spawnedObject);
+            }
+        }
+
+        return false;
+    }
+
+    //NORMALNA ROZGRYWKA (Odliczanie do zwykłych fal)
+    waveTimer += deltaTime;
+
     if (waveTimer >= timeBetweenWaves) {
-        spawnWave();
         AssetManager::playSound("assets/audio/sfx/waveStart.wav");
-        //SYSTEM SPAWNOWANIA BOSSÓW NA KONKRETNYCH FALACH
+
         bool spawnBoss = false;
         BossType bType = BossType::ROOT_STRANGLER;
         float scaling = 1.0f;
 
-        // Bossowie przypisani do konkretnych etapów rozgrywki
+        // Rozpiska fal z bossami
         if (currentWave == 3) {
             spawnBoss = true; bType = BossType::ROOT_STRANGLER;
         } else if (currentWave == 6) {
@@ -38,41 +56,30 @@ bool WaveManager::update(float deltaTime) {
         } else if (currentWave == 15) {
             spawnBoss = true; bType = BossType::CHAOS_GOLEM;
         }
-        // Nieskończona rozgrywka po fali 15 - losowy boss co 5 fal, coraz silniejszy
         else if (currentWave > 15 && currentWave % 5 == 0) {
             spawnBoss = true;
             bType = static_cast<BossType>(rand() % 4);
-            scaling = 1.0f + ((currentWave - 15) * 0.10f); // +10% statystyk z każdym loopem
+            scaling = 1.0f + ((currentWave - 15) * 0.10f); // +10% statystyk po 15 fali
         }
 
-        // Jeśli to odpowiednia fala i nie ma aktualnie aktywnego bossa na mapie
-        if (spawnBoss && activeBoss == nullptr) {
+        // Generowanie przeciwników na ten moment
+        if (spawnBoss) {
             bossesSpawned++;
-            // Spawnuje się z dala od gracza
             float spawnX = player->getPosition().x + 1000.f;
             float spawnY = player->getPosition().y + 1000.f;
 
             activeBoss = std::make_shared<Boss>(spawnX, spawnY, bType, player, scaling);
             gameObjects.push_back(activeBoss);
             AssetManager::playSound("assets/audio/sfx/bossSpawn.wav");
+        } else {
+            spawnWave(); // Respi chmarę tylko jeśli nie ma bossa
         }
+
         currentWave++;
         waveTimer = 0.f;
         waveSpawned = true;
     }
 
-    // Czyszczenie wskaźnika, jeśli gracz pokonał bossa
-    if (activeBoss && !activeBoss->isActive()) {
-        activeBoss = nullptr;
-    }
-
-    // Odbieranie ataków i sługusów stworzonych przez umiejętności Bossa
-    if (activeBoss) {
-        auto bossSpawns = activeBoss->extractSpawns();
-        for (auto& spawnedObject : bossSpawns) {
-            gameObjects.push_back(spawnedObject);
-        }
-    }
     return waveSpawned;
 }
 

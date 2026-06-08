@@ -47,6 +47,12 @@ private:
     sf::Text textScoresList;
     sf::RectangleShape btnReturnFromScores; sf::Text textReturnFromScores;
 
+    // Przyciski do muzyki
+    sf::RectangleShape btnMusicMinus, btnMusicPlus;
+    sf::RectangleShape btnSfxMinus, btnSfxPlus;
+    sf::Text textMusicMinus, textMusicPlus, textMusicVol;
+    sf::Text textSfxMinus, textSfxPlus, textSfxVol;
+
 public:
     UIManager();
 
@@ -77,6 +83,11 @@ public:
     const sf::Font& getFont() const { return font; }
     // Wyświetlanie paska życia bossa
     void drawBossHealthBar(sf::RenderWindow& window, int currentHp, int maxHp, const std::string& bossName);
+    // Muzyka
+    bool isMusicMinusClicked(sf::Vector2f pos) const;
+    bool isMusicPlusClicked(sf::Vector2f pos) const;
+    bool isSfxMinusClicked(sf::Vector2f pos) const;
+    bool isSfxPlusClicked(sf::Vector2f pos) const;
 };
 
 #endif

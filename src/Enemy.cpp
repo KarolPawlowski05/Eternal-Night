@@ -10,6 +10,7 @@ Enemy::Enemy(float x, float y, EnemyType type, std::shared_ptr<Player> player, f
 
     this->target = player;
     this->type = type;
+    this->currentState = EnemyState::CHASING; //Domyślny stan po spawnie
 
     damageCooldown = 0.f;
     fireAuraCooldown = 0.f;
@@ -197,70 +198,130 @@ void Enemy::update(float deltaTime){
     sf::Vector2f playerPos = target->getPosition();
 
     // Obliczamy różnicę pozycji
-     float dx = playerPos.x - position.x;
+    float dx = playerPos.x - position.x;
     float dy = playerPos.y - position.y;
 
     // Obliczamy odległość z twierdzenia Pitagorasa
     float distance = sqrt(dx * dx + dy * dy);
 
-    // Skille specjalne wrogów
+    abilityTimer += deltaTime;
 
-    // 1. Szarża Upiora (doskok co 3 sekundy)
-    if (type == EnemyType::UPIOR) {
-        abilityTimer += deltaTime;
-        if (abilityTimer >= 5.0f && abilityTimer <= 5.3f) speed = baseSpeed * 3.5f;
-        else if (abilityTimer > 5.3f) { speed = baseSpeed; abilityTimer = 0.f; }
+    switch (currentState) {
+    case EnemyState::CHASING: {
+        if (type == EnemyType::UPIOR && abilityTimer >= 5.0f) {
+            currentState = EnemyState::SPECIAL_ACTION;
+            // Szarża zawsze w gracza, ignoruje ścieżki A*
+            if (distance > 0) dashDir = sf::Vector2f(dx / distance, dy / distance);
+            else dashDir = sf::Vector2f(1.f, 0.f);
+
+            abilityTimer = 0.f;
+        } else if (type == EnemyType::CIEN && abilityTimer >= 4.0f) {
+            currentState = EnemyState::SPECIAL_ACTION;
+        } else if (type == EnemyType::OGROWATE && abilityTimer >= 8.0f) {
+            currentState = EnemyState::SPECIAL_ACTION;
+        } else if (type == EnemyType::WAMPIR && hp < maxHp * 0.5f && !isBatForm) {
+            currentState = EnemyState::SPECIAL_ACTION;
+        }
+
+        if (distance > 0) {
+            float dirX = dx / distance;
+            float dirY = dy / distance;
+
+            // Sprite odwróci się tylko, jeśli ruch w bok jest wyraźny
+            if (dirX < -0.1f) facingLeft = true;
+            else if (dirX > 0.1f) facingLeft = false;
+
+            // 2. BEZWŁADNOŚĆ (Płynny start, stop i skręcanie)
+            sf::Vector2f desiredVelocity(dirX * speed, dirY * speed);
+
+            //Płynne dążenie obecnej prędkości do pożądanej
+            velocity.x += (desiredVelocity.x - velocity.x) * 5.0f * deltaTime;
+            velocity.y += (desiredVelocity.y - velocity.y) * 5.0f * deltaTime;
+
+            sf::Vector2f finalVelocity = velocity + externalForce;
+
+            position.x += finalVelocity.x * deltaTime;
+            position.y += finalVelocity.y * deltaTime;
+        }
+        break;
     }
 
-    // 2. Niewidzialność Cienia (ukrywanie się)
-    if (type == EnemyType::CIEN) {
-        abilityTimer += deltaTime;
-        if (abilityTimer >= 4.0f && abilityTimer < 5.0f) {
-            isFaded = true;
-            int flicker = static_cast<int>(abilityTimer * 10) % 2;
-            hpBarBackground.setFillColor(sf::Color(0,0,0,0));
-            hpBarForeground.setFillColor(sf::Color(0,0,0,0));
-        } else {
-            isFaded = false;
-            abilityTimer = std::fmod(abilityTimer, 5.0f);
-            if (distance < 150.f) {
-                hpBarBackground.setFillColor(sf::Color(0,0,0,255));
-                hpBarForeground.setFillColor(sf::Color(255,0,0,255));
-            } else {
+    case EnemyState::SPECIAL_ACTION: {
+        if (type == EnemyType::UPIOR) {
+            // FAZA 1: Przygotowanie (Telegraphing) - od 0.0s do 0.4s
+            if (abilityTimer < 0.4f) {
+                // Upiór "zbiera siły", stoi w miejscu.
+                // To daje graczowi szansę na reakcję i niweluje efekt zacinania się
+
+                // Zwracamy go twarzą w stronę, w którą zaraz skoczy
+                facingLeft = (dashDir.x < 0);
+            }
+            // FAZA 2: Właściwa Szarża - od 0.4s do 0.6s (bardzo dynamiczna)
+            else if (abilityTimer >= 0.4f && abilityTimer < 0.6f) {
+                float dashSpeed = baseSpeed * 6.0f; // Podkręcamy prędkość
+
+                sf::Vector2f moveVelocity(dashDir.x * dashSpeed, dashDir.y * dashSpeed);
+
+                //Upiór nadal musi być odpychany przez inne potwory podczas dasha
+                moveVelocity += externalForce;
+
+                position.x += moveVelocity.x * deltaTime;
+                position.y += moveVelocity.y * deltaTime;
+            }
+            // FAZA 3: Powrót do zwykłego pościgu
+            else {
+                abilityTimer = 0.f;
+                currentState = EnemyState::CHASING;
+            }
+        } else if (type == EnemyType::CIEN) {
+            if (abilityTimer < 5.0f) {
+                isFaded = true;
                 hpBarBackground.setFillColor(sf::Color(0,0,0,0));
                 hpBarForeground.setFillColor(sf::Color(0,0,0,0));
+
+                // Cień musi śledzić gracza będąc niewidzialnym
+                if (distance > 0) {
+                    float dirX = dx / distance;
+                    float dirY = dy / distance;
+                    facingLeft = (dirX < 0);
+                    position.x += dirX * speed * deltaTime;
+                    position.y += dirY * speed * deltaTime;
+                }
+            } else {
+                isFaded = false;
+                abilityTimer = 0.f;
+                currentState = EnemyState::CHASING;
             }
-        }
-    }
-    // Umiejetnosc ogra
-    if (type == EnemyType::OGROWATE) {
-        abilityTimer += deltaTime;
-        if (abilityTimer >= 8.0f) {
+        } else if (type == EnemyType::OGROWATE) {
             readyToThrow = true;
             abilityTimer = 0.f;
-        }
-    }
-    // Umiejetnosc wampira
-    if (type == EnemyType::WAMPIR) {
-        if (hp < maxHp * 0.5f && !isBatForm) {
+            currentState = EnemyState::CHASING;
+        } else if (type == EnemyType::WAMPIR) {
             isBatForm = true;
             speed = baseSpeed * 1.9f;
+            currentState = EnemyState::CHASING;
+        }
+        break;
+    }
+    }
+
+    if (type == EnemyType::CIEN && currentState != EnemyState::SPECIAL_ACTION) {
+        if (distance < 150.f) {
+            hpBarBackground.setFillColor(sf::Color(0,0,0,255));
+            hpBarForeground.setFillColor(sf::Color(255,0,0,255));
+        } else {
+            hpBarBackground.setFillColor(sf::Color(0,0,0,0));
+            hpBarForeground.setFillColor(sf::Color(0,0,0,0));
         }
     }
 
-    if (distance > 0) {
-        // Normalizujemy wektor żeby wróg nie poruszał się szybciej po skosie
-        float dirX = dx / distance;
-        float dirY = dy / distance;
+    // Płynne tłumienie siły odpychającej niezależne od FPS
+    float friction = 10.0f;
+    externalForce.x -= externalForce.x * friction * deltaTime;
+    externalForce.y -= externalForce.y * friction * deltaTime;
 
-        // Ustalenie kierunku patrzenia na podstawie ruchu gracza
-        if(dirX < 0) facingLeft = true;
-        else if(dirX > 0) facingLeft = false;
-
-        // Zmieniamy matematyczną pozycję wroga
-        position.x += dirX * speed * deltaTime;
-        position.y += dirY * speed * deltaTime;
-    }
+    enemySprite.setPosition(position);
+    fallbackShape.setPosition(position);
 
     enemySprite.setPosition(position);
     fallbackShape.setPosition(position);

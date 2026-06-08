@@ -47,6 +47,28 @@ UIManager::UIManager() {
         btnPauseReturn.setSize(sf::Vector2f(300.f, 60.f)); btnPauseReturn.setPosition(490.f, 400.f); btnPauseReturn.setFillColor(sf::Color(100, 50, 50));
         textPauseReturn.setFont(font); textPauseReturn.setString("Back to menu"); textPauseReturn.setCharacterSize(30); tb = textPauseReturn.getLocalBounds(); textPauseReturn.setOrigin(tb.left + tb.width / 2.f, tb.top + tb.height / 2.f); textPauseReturn.setPosition(640.f, 430.f);
 
+        // Muzyka w menu pauzy
+        btnMusicMinus.setSize(sf::Vector2f(50.f, 50.f)); btnMusicMinus.setPosition(490.f, 500.f); btnMusicMinus.setFillColor(sf::Color(80, 80, 80));
+        textMusicMinus.setFont(font); textMusicMinus.setString("<"); textMusicMinus.setCharacterSize(30);
+        tb = textMusicMinus.getLocalBounds(); textMusicMinus.setOrigin(tb.left + tb.width/2.f, tb.top + tb.height/2.f); textMusicMinus.setPosition(515.f, 525.f);
+
+        btnMusicPlus.setSize(sf::Vector2f(50.f, 50.f)); btnMusicPlus.setPosition(740.f, 500.f); btnMusicPlus.setFillColor(sf::Color(80, 80, 80));
+        textMusicPlus.setFont(font); textMusicPlus.setString(">"); textMusicPlus.setCharacterSize(30);
+        tb = textMusicPlus.getLocalBounds(); textMusicPlus.setOrigin(tb.left + tb.width/2.f, tb.top + tb.height/2.f); textMusicPlus.setPosition(765.f, 525.f);
+
+        textMusicVol.setFont(font); textMusicVol.setCharacterSize(30); textMusicVol.setPosition(640.f, 525.f);
+
+        // SFX
+        btnSfxMinus.setSize(sf::Vector2f(50.f, 50.f)); btnSfxMinus.setPosition(490.f, 570.f); btnSfxMinus.setFillColor(sf::Color(80, 80, 80));
+        textSfxMinus.setFont(font); textSfxMinus.setString("<"); textSfxMinus.setCharacterSize(30);
+        tb = textSfxMinus.getLocalBounds(); textSfxMinus.setOrigin(tb.left + tb.width/2.f, tb.top + tb.height/2.f); textSfxMinus.setPosition(515.f, 595.f);
+
+        btnSfxPlus.setSize(sf::Vector2f(50.f, 50.f)); btnSfxPlus.setPosition(740.f, 570.f); btnSfxPlus.setFillColor(sf::Color(80, 80, 80));
+        textSfxPlus.setFont(font); textSfxPlus.setString(">"); textSfxPlus.setCharacterSize(30);
+        tb = textSfxPlus.getLocalBounds(); textSfxPlus.setOrigin(tb.left + tb.width/2.f, tb.top + tb.height/2.f); textSfxPlus.setPosition(765.f, 595.f);
+
+        textSfxVol.setFont(font); textSfxVol.setCharacterSize(30); textSfxVol.setPosition(640.f, 595.f);
+
         textGameOver.setFont(font); textGameOver.setString("You died"); textGameOver.setCharacterSize(80); textGameOver.setFillColor(sf::Color::Red);
         tb = textGameOver.getLocalBounds(); textGameOver.setOrigin(tb.left + tb.width / 2.f, tb.top + tb.height / 2.f); textGameOver.setPosition(640.f, 190.f);
         textFinalScore.setFont(font); textFinalScore.setCharacterSize(40); textFinalScore.setPosition(640.f, 320.f);
@@ -159,7 +181,7 @@ void UIManager::renderGameOver(sf::RenderWindow &window, int score, const std::s
     window.draw(overlay);
 
     window.draw(textGameOver);
-    textFinalScore.setString("Twoj ostateczny wynik: " + std::to_string(score));
+    textFinalScore.setString("Your final score: " + std::to_string(score));
     sf::FloatRect scoreBounds = textFinalScore.getLocalBounds();
     textFinalScore.setOrigin(scoreBounds.left + scoreBounds.width / 2.f, scoreBounds.top + scoreBounds.height / 2.f);
 
@@ -190,6 +212,24 @@ void UIManager::renderPause(sf::RenderWindow &window) {
     window.draw(textPaused);
     window.draw(btnResume); window.draw(textResume);
     window.draw(btnPauseReturn); window.draw(textPauseReturn);
+
+    // Aktualizacja i wyśrodkowanie tekstów z wartościami
+    textMusicVol.setString("Music: " + std::to_string(static_cast<int>(AssetManager::getMusicVolume())) + "%");
+    sf::FloatRect tb = textMusicVol.getLocalBounds();
+    textMusicVol.setOrigin(tb.left + tb.width / 2.f, tb.top + tb.height / 2.f);
+
+    textSfxVol.setString("SFX: " + std::to_string(static_cast<int>(AssetManager::getSfxVolume())) + "%");
+    tb = textSfxVol.getLocalBounds();
+    textSfxVol.setOrigin(tb.left + tb.width / 2.f, tb.top + tb.height / 2.f);
+
+    // Rysowanie
+    window.draw(btnMusicMinus); window.draw(textMusicMinus);
+    window.draw(btnMusicPlus); window.draw(textMusicPlus);
+    window.draw(textMusicVol);
+
+    window.draw(btnSfxMinus); window.draw(textSfxMinus);
+    window.draw(btnSfxPlus); window.draw(textSfxPlus);
+    window.draw(textSfxVol);
 }
 
 void UIManager::renderScores(sf::RenderWindow& window, const std::string& scoresText) {
@@ -222,20 +262,20 @@ void UIManager::generateUpgrades() {
         sf::Color color;
 
         switch (selected[i]) {
-        case 0: text = L"+20 Max HP\n& Leczenie"; color = sf::Color(50, 100, 50); break;
-        case 1: text = L"+15% Szybkości\nRuchu"; color = sf::Color(50, 50, 100); break;
-        case 2: text = L"-10% Czasu\nOdnowienia\nAtaku"; color = sf::Color(100, 50, 50); break;
-        case 3: text = L"+5 Obrażeń\nAtaku"; color = sf::Color(120, 40, 40); break;
-        case 4: text = L"+2 Punkty\nPancerza"; color = sf::Color(100, 100, 30); break;
-        case 5: text = L"+5% Szansy\nna Krytyk"; color = sf::Color(100, 50, 100); break;
-        case 6: text = L"+5% Szansy na\nLeczenie (2HP)\npo zabójstwie"; color = sf::Color(140, 20, 50); break;
-        case 7: text = L"+ Zasięg\nPodnoszenia\n(Magnes)"; color = sf::Color(100, 100, 150); break;
-        case 8: text = L"+10% Szansy\nna Uniknięcie\nObrażeń"; color = sf::Color(40, 120, 120); break;
-        case 9: text = L"-20% Czasu\nOdnowienia\nKuszy"; color = sf::Color(150, 100, 50); break;
-        case 10: text = L"Regeneracja\n+1 HP co\n5 sekund"; color = sf::Color(50, 150, 50); break;
-        case 11: text = L"Aura Ognia\n(Odblokuj / Powiększ)"; color = sf::Color(200, 80, 0); break;
-        case 12: text = L"Orbitujące Ostrze\n(Odblokuj / Przyspiesz)"; color = sf::Color(0, 150, 200); break;
-        case 13: text = L"Różdżka\n(Odblokuj / Ulepsz)"; color = sf::Color(120, 0, 200); break;
+        case 0: text = L"+20 Max HP\n& Heal"; color = sf::Color(50, 100, 50); break;
+        case 1: text = L"+15% Movement\nSpeed"; color = sf::Color(50, 50, 100); break;
+        case 2: text = L"-10% Attack\nCooldown"; color = sf::Color(100, 50, 50); break;
+        case 3: text = L"+5 Attack\nDamage"; color = sf::Color(120, 40, 40); break;
+        case 4: text = L"+2 Armor\nPoints"; color = sf::Color(100, 100, 30); break;
+        case 5: text = L"+5% Critical\nHit Chance"; color = sf::Color(100, 50, 100); break;
+        case 6: text = L"+5% Heal Chance\n(2 HP) on kill"; color = sf::Color(140, 20, 50); break;
+        case 7: text = L"+ Pickup\nRadius\n(Magnet)"; color = sf::Color(100, 100, 150); break;
+        case 8: text = L"+10% Dodge\nChance"; color = sf::Color(40, 120, 120); break;
+        case 9: text = L"-20% Crossbow\nCooldown"; color = sf::Color(150, 100, 50); break;
+        case 10: text = L"Regeneration\n+1 HP every\n5 seconds"; color = sf::Color(50, 150, 50); break;
+        case 11: text = L"Fire Aura\n(Unlock / Expand)"; color = sf::Color(200, 80, 0); break;
+        case 12: text = L"Orbiting Sword\n(Unlock / Faster)"; color = sf::Color(0, 150, 200); break;
+        case 13: text = L"Magic Wand\n(Unlock / Upgrade)"; color = sf::Color(120, 0, 200); break;
         }
 
         if(i == 0) { textCard1.setString(text); card1.setFillColor(color); }
@@ -282,3 +322,8 @@ void UIManager::drawBossHealthBar(sf::RenderWindow& window, int currentHp, int m
 
     window.setView(prevView);
 }
+// Metody sprawdzajace kliknięcia
+bool UIManager::isMusicMinusClicked(sf::Vector2f pos) const { return btnMusicMinus.getGlobalBounds().contains(pos); }
+bool UIManager::isMusicPlusClicked(sf::Vector2f pos) const { return btnMusicPlus.getGlobalBounds().contains(pos); }
+bool UIManager::isSfxMinusClicked(sf::Vector2f pos) const { return btnSfxMinus.getGlobalBounds().contains(pos); }
+bool UIManager::isSfxPlusClicked(sf::Vector2f pos) const { return btnSfxPlus.getGlobalBounds().contains(pos); }

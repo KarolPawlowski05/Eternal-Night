@@ -55,6 +55,8 @@ private:
     CollisionSystem collisionSystem;
     EntityManager entityManager;
 
+    bool bossMusicPlaying = false;
+
 public:
     Engine();
     void run();

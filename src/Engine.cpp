@@ -94,6 +94,20 @@ void Engine::handleEvents() {
                     AssetManager::playSound("assets/audio/sfx/buttonClick.wav");
                     currentState = GameState::MAIN_MENU;
                 }
+                // Kontrolki głośności
+                else if (uiManager.isMusicMinusClicked(mousePos)) {
+                    AssetManager::playSound("assets/audio/sfx/buttonClick.wav");
+                    AssetManager::setMusicVolume(AssetManager::getMusicVolume() - 10.f);
+                } else if (uiManager.isMusicPlusClicked(mousePos)) {
+                    AssetManager::playSound("assets/audio/sfx/buttonClick.wav");
+                    AssetManager::setMusicVolume(AssetManager::getMusicVolume() + 10.f);
+                } else if (uiManager.isSfxMinusClicked(mousePos)) {
+                    AssetManager::setSfxVolume(AssetManager::getSfxVolume() - 10.f);
+                    AssetManager::playSound("assets/audio/sfx/buttonClick.wav");
+                } else if (uiManager.isSfxPlusClicked(mousePos)) {
+                    AssetManager::setSfxVolume(AssetManager::getSfxVolume() + 10.f);
+                    AssetManager::playSound("assets/audio/sfx/buttonClick.wav");
+                }
             }
             else if (currentState == GameState::GAME_OVER) {
                 if (uiManager.isGameOverReturnClicked(mousePos)) {
@@ -159,18 +173,57 @@ void Engine::resetGame() {
     waveManager = std::make_unique<WaveManager>(player, entityManager.getEntities());
     waveManager->reset();
 
-    // LOSOWE GENEROWANIE PRZESZKÓD
-    for (int i = 0; i < 25; ++i) {
-        float randX = player->getPosition().x + (rand() % 2400) - 1200;
-        float randY = player->getPosition().y + (rand() % 2400) - 1200;
-        int randType = rand() % 3;
+    // LOSOWE GENEROWANIE PRZESZKÓD (METODA SKUPISKOWA)
+    int numClusters = 30; // 30 dużych skupisk na mapie
 
-        ObstacleType type;
-        if (randType == 0) type = ObstacleType::TREE;
-        else if (randType == 1) type = ObstacleType::BUSH;
-        else type = ObstacleType::ROCK;
+    for (int c = 0; c < numClusters; ++c) {
+        float clusterX = player->getPosition().x + (rand() % 6000) - 3000;
+        float clusterY = player->getPosition().y + (rand() % 6000) - 3000;
+        int clusterMainType = rand() % 3;
+        int itemsInCluster = 5 + (rand() % 14);
 
-        entityManager.addEntity(std::make_shared<Obstacle>(randX, randY, type));
+        for (int i = 0; i < itemsInCluster; ++i) {
+            bool isColliding = true;
+            std::shared_ptr<Obstacle> newObstacle;
+            int attempts = 0; // Zabezpieczenie przed nieskończoną pętlą
+
+            // Pętla szuka wolnego miejsca, uderzy maksymalnie 15 razy
+            while (isColliding && attempts < 15) {
+                float offsetX = (rand() % 1000) - 500;
+                float offsetY = (rand() % 1000) - 500;
+
+                ObstacleType type;
+                if (rand() % 100 < 85) {
+                    if (clusterMainType == 0) type = ObstacleType::TREE;
+                    else if (clusterMainType == 1) type = ObstacleType::BUSH;
+                    else type = ObstacleType::ROCK;
+                } else {
+                    int randomType = rand() % 3;
+                    if (randomType == 0) type = ObstacleType::TREE;
+                    else if (randomType == 1) type = ObstacleType::BUSH;
+                    else type = ObstacleType::ROCK;
+                }
+
+                newObstacle = std::make_shared<Obstacle>(clusterX + offsetX, clusterY + offsetY, type);
+                isColliding = false;
+
+                // Sprawdzanie nakładania się na inne PRZESZKODY
+                for (const auto& obj : entityManager.getEntities()) {
+                    if (dynamic_cast<Obstacle*>(obj.get())) {
+                        if (newObstacle->getBounds().intersects(obj->getBounds())) {
+                            isColliding = true;
+                            break; // Znaleziono kolizję przerywamy sprawdzanie i losujemy nowe kordy
+                        }
+                    }
+                }
+                attempts++;
+            }
+
+            // Jeśli znaleziono bezpieczne miejsce wrzucamy na mapę
+            if (!isColliding && newObstacle) {
+                entityManager.addEntity(newObstacle);
+            }
+        }
     }
 
     // LOSOWE MIKSTURY
@@ -264,6 +317,20 @@ void Engine::update(float deltaTime) {
 
     entityManager.cleanupDeadEntities();
 
+    // Zarządzanie muzyką
+    bool bossActive = (waveManager && waveManager->getActiveBoss() != nullptr);
+
+    if (bossActive && !bossMusicPlaying) {
+        AssetManager::stopMusic();
+        AssetManager::playMusic("assets/audio/music/bossMusic.ogg");
+        bossMusicPlaying = true;
+    }
+    else if (!bossActive && bossMusicPlaying) {
+        AssetManager::stopMusic();
+        AssetManager::playMusic("assets/audio/music/bgMusic.ogg");
+        bossMusicPlaying = false;
+    }
+
     if(player->checkLevelUp()) {
         uiManager.generateUpgrades();
         currentState = GameState::LEVEL_UP;
@@ -273,6 +340,7 @@ void Engine::update(float deltaTime) {
     if(player->getHp() <= 0) {
         AssetManager::playSound("assets/audio/sfx/gameOver.wav");
         AssetManager::stopMusic();
+        bossMusicPlaying = false;
         currentState = GameState::GAME_OVER;
     }
 
@@ -311,12 +379,10 @@ void Engine::render() {
         // Kamera interfejsu
         window.setView(window.getDefaultView());
         uiManager.renderHUD(window, player, gameTime, waveManager.get());
+
         if (waveManager && waveManager->getActiveBoss() != nullptr) {
-            AssetManager::playMusic("assets/audio/music/bossMusic.ogg");
             auto boss = waveManager->getActiveBoss();
             uiManager.drawBossHealthBar(window, boss->getHp(), boss->getMaxHp(), boss->getName());
-        } else {
-            AssetManager::playMusic("assets/audio/music/bgMusic.ogg");
         }
 
         if      (currentState == GameState::LEVEL_UP)   uiManager.renderLevelUp(window);

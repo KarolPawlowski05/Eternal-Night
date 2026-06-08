@@ -20,6 +20,8 @@ private:
     static sf::Music music;
     static std::map<std::string, std::shared_ptr<sf::Font>> fontCache;
 
+    static float musicVolume;
+    static float sfxVolume;
     AssetManager() = default;
 
 public:
@@ -37,6 +39,9 @@ public:
     static void stopMusic();
     static void setMusicVolume(float volume);
     static bool isMusicPlaying(const std::string& path);
+    static void setSfxVolume(float volume);
+    static float getMusicVolume();
+    static float getSfxVolume();
 
     // Czcionka
     static std::shared_ptr<sf::Font> loadFont(const std::string& path);

@@ -10,6 +10,22 @@ sf::Music AssetManager::music;
 static std::string currentMusicPath = "";
 std::map<std::string, std::shared_ptr<sf::Font>> AssetManager::fontCache;
 
+// Inicjalizacja domyślnej głośności
+float AssetManager::musicVolume = 50.f;
+float AssetManager::sfxVolume = 50.f;
+
+void AssetManager::setMusicVolume(float volume) {
+    musicVolume = std::clamp(volume, 0.f, 100.f);
+    music.setVolume(musicVolume);
+}
+
+void AssetManager::setSfxVolume(float volume) {
+    sfxVolume = std::clamp(volume, 0.f, 100.f);
+}
+
+float AssetManager::getMusicVolume() { return musicVolume; }
+float AssetManager::getSfxVolume() { return sfxVolume; }
+
 // Tekstury
 std::shared_ptr<sf::Texture> AssetManager::loadTexture(const std::string& path) {
     // Sprawdzenie czy już załadowana
@@ -59,7 +75,7 @@ std::shared_ptr<sf::SoundBuffer> AssetManager::loadSoundBuffer(const std::string
 }
 
 // Muzyka
-void AssetManager::playMusic(const std::string& path, bool loop, float volume) {
+void AssetManager::playMusic(const std::string& path, bool loop, float /*volume*/) {
     if(currentMusicPath == path) return;
     if(!music.openFromFile(path)) {
         std::cerr << "Failed to open music: " << path << std::endl;
@@ -67,17 +83,13 @@ void AssetManager::playMusic(const std::string& path, bool loop, float volume) {
     }
     currentMusicPath = path;
     music.setLoop(loop);
-    music.setVolume(volume);
+    music.setVolume(musicVolume);
     music.play();
 }
 
 void AssetManager::stopMusic() {
     music.stop();
     currentMusicPath = "";
-}
-
-void AssetManager::setMusicVolume(float volume) {
-    music.setVolume(volume);
 }
 
 void AssetManager::playSound(const std::string& path, float volume) {
@@ -89,7 +101,7 @@ void AssetManager::playSound(const std::string& path, float volume) {
     for(auto& s : soundPool) {
         if(s.getStatus() == sf::Sound::Stopped) {
             s.setBuffer(*buffer);
-            s.setVolume(volume);
+            s.setVolume(volume * (sfxVolume / 100.f));
             s.play();
             return;
         }
