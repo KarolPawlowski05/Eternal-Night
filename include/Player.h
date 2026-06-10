@@ -24,6 +24,8 @@ private:
     void updateAnimation(const sf::Vector2f& movement, bool isMoving, float deltaTime);
     void castAttack();
 
+    void applyLevelUpBonuses();    // Automatyczne skalowanie przy level up
+    void clampStats();              // Egzekwowanie capów
 public:
     Player(float x, float y);
 
@@ -58,6 +60,8 @@ public:
         progression.xp -= progression.maxXp;
         progression.level++;
         progression.maxXp = static_cast<int>(progression.maxXp * 1.30f);
+        //Automatyczne skalowanie gracza
+        applyLevelUpBonuses();
         AssetManager::playSound("assets/audio/sfx/levelUp.wav");
     }
     void applyUpgrade(int choice);
@@ -76,6 +80,11 @@ public:
     float getSpeed() const { return movement.speed; }
     int getHpRegenRate() const { return stats.hpRegenRate; }
     void triggerVampirism();
+
+    // Metody do sprawdzenia capów i wyświetlania upgrade'ów
+    bool isStatAtCap(int upgradeChoice) const;
+    int getUpgradeValue(int upgradeChoice) const;
+    std::wstring getUpgradeDescription(int upgradeChoice) const;
 
     // Zbieranie
     sf::FloatRect getPickupBounds() const {
@@ -103,6 +112,8 @@ public:
     // GOD MODE
     void toggleGodMode() { godMode = !godMode; }
     bool getGodMode() const { return godMode; }
+
+    int getMaxHp() const { return health.maxHp; }
 
 
 };

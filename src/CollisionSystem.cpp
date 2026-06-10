@@ -77,7 +77,7 @@ void CollisionSystem::update(std::shared_ptr<Player>& player, std::vector<std::s
                 float dist = std::sqrt(dx * dx + dy * dy);
                 if(dist <= player->getFireAuraRadius()) {
                     bool wasCrit = false;
-                    int dmg = player->getDamage(3, &wasCrit);
+                    int dmg = player->getDamage(1, &wasCrit);
                     int dealt = enemy->takeDamage(dmg, 1);
                     if(dealt > 0) spawnDamageNumber(enemy->getPosition().x, enemy->getPosition().y, dealt, wasCrit, font, newObjects);
                     if(!enemy->isActive()) {

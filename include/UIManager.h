@@ -52,6 +52,7 @@ private:
     sf::RectangleShape btnSfxMinus, btnSfxPlus;
     sf::Text textMusicMinus, textMusicPlus, textMusicVol;
     sf::Text textSfxMinus, textSfxPlus, textSfxVol;
+    std::shared_ptr<Player> lastPlayer;  // Referencja do gracza dla dynamicznych opisów
 
 public:
     UIManager();
@@ -88,6 +89,7 @@ public:
     bool isMusicPlusClicked(sf::Vector2f pos) const;
     bool isSfxMinusClicked(sf::Vector2f pos) const;
     bool isSfxPlusClicked(sf::Vector2f pos) const;
+    void generateUpgrades(const std::shared_ptr<Player>& player);
 };
 
 #endif

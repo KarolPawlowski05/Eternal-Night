@@ -89,6 +89,8 @@ void WaveManager::spawnWave() {
     float hpM    = 1.0f + (currentWave * 0.15f);
     float speedM = 1.0f + (currentWave * 0.04f);
 
+    //Info o fali dla debuggingu
+    printf("Wave %d: Enemy HP x%.2f, Speed x%.2f\n", currentWave, hpM, speedM);
     sf::Vector2f center = player->getPosition();
     constexpr float SPAWN_RADIUS = 700.f;
 

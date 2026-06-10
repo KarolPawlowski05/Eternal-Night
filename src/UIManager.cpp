@@ -133,6 +133,17 @@ void UIManager::renderHUD(sf::RenderWindow &window, const std::shared_ptr<Player
     xpLevelText.setPosition(1272.f, 11.f);
     window.draw(xpLevelText);
 
+    // HP text
+    sf::Text hpText;
+    hpText.setFont(font);
+    hpText.setCharacterSize(16);
+    hpText.setFillColor(sf::Color(50, 255, 50));  // Zielony
+    hpText.setOutlineThickness(1.f);
+    hpText.setOutlineColor(sf::Color::Black);
+    hpText.setString("HP: " + std::to_string(player->getHp()) + "/" + std::to_string(player->getMaxHp()));
+    hpText.setPosition(10.f, 26.f);  // Obok lewej strony
+    window.draw(hpText);
+
     int minutes = static_cast<int>(gameTime) / 60;
     int seconds = static_cast<int>(gameTime) % 60;
     std::string timeStr = (minutes < 10 ? "0" : "") + std::to_string(minutes) + ":" + (seconds < 10 ? "0" : "") + std::to_string(seconds);
@@ -158,7 +169,7 @@ void UIManager::renderHUD(sf::RenderWindow &window, const std::shared_ptr<Player
                            "\nCRIT: " + std::to_string(static_cast<int>(player->getCritChance() * 100)) + "%" +
                            "\nVAMPIRE: " + std::to_string(static_cast<int>(player->getVampirismChance() * 100)) + "%" +
                            "\nDODGE: " + std::to_string(static_cast<int>(player->getDodgeChance() * 100)) + "%" +
-                           "\nREGEN: " + std::to_string(player->getHpRegenRate()) + " HP/5s" +
+                           "\nREGEN: " + std::to_string(player->getHpRegenRate()) + " HP/3s" +
                            "\nSPEED: " + std::to_string(static_cast<int>(player->getSpeed()));
     hudStatsText.setString(statsStr);
     window.draw(hudStatsText);
@@ -247,41 +258,69 @@ void UIManager::renderScores(sf::RenderWindow& window, const std::string& scores
     window.draw(btnReturnFromScores); window.draw(textReturnFromScores);
 }
 
-void UIManager::generateUpgrades() {
+void UIManager::generateUpgrades(const std::shared_ptr<Player>& player) {
+    lastPlayer = player;
+
     std::vector<int> selected;
-    while(selected.size() < 3) {
-        int r = rand() % 14;
-        if(std::find(selected.begin(), selected.end(), r) == selected.end()) {
-            selected.push_back(r);
+    std::vector<int> pool;
+
+    // Pula wszystkich upgrade'ów
+    for (int i = 0; i < 14; ++i) {
+        pool.push_back(i);
+    }
+
+    // Losuj 3 upgrade'y, ale pomiń te co są na capie
+    while(selected.size() < 3 && pool.size() > 0) {
+        int randIdx = rand() % pool.size();
+        int upgrade = pool[randIdx];
+
+        // Jeśli stat jest na capie pomiń ten upgrade
+        if (!player->isStatAtCap(upgrade)) {
+            selected.push_back(upgrade);
+        }
+
+        // Usuń z puli
+        pool.erase(pool.begin() + randIdx);
+    }
+
+    // Jeśli mamy mniej niż 3 upgrade'y, dodaj unique upgrade'y bez capów
+    while (selected.size() < 3 && selected.size() < pool.size()) {
+        int randIdx = rand() % pool.size();
+        int upgrade = pool[randIdx];
+        if (std::find(selected.begin(), selected.end(), upgrade) == selected.end()) {
+            selected.push_back(upgrade);
         }
     }
 
-    for(int i = 0; i < 3; ++i) {
+    for(int i = 0; i < 3 && i < selected.size(); ++i) {
         offeredUpgrades[i] = selected[i];
-        std::wstring text;
+
+        //Dynamiczny opis ze skalowaniem i capami
+        std::wstring text = player->getUpgradeDescription(selected[i]);
         sf::Color color;
 
         switch (selected[i]) {
-        case 0: text = L"+20 Max HP\n& Heal"; color = sf::Color(50, 100, 50); break;
-        case 1: text = L"+15% Movement\nSpeed"; color = sf::Color(50, 50, 100); break;
-        case 2: text = L"-10% Attack\nCooldown"; color = sf::Color(100, 50, 50); break;
-        case 3: text = L"+5 Attack\nDamage"; color = sf::Color(120, 40, 40); break;
-        case 4: text = L"+2 Armor\nPoints"; color = sf::Color(100, 100, 30); break;
-        case 5: text = L"+5% Critical\nHit Chance"; color = sf::Color(100, 50, 100); break;
-        case 6: text = L"+5% Heal Chance\n(2 HP) on kill"; color = sf::Color(140, 20, 50); break;
-        case 7: text = L"+ Pickup\nRadius\n(Magnet)"; color = sf::Color(100, 100, 150); break;
-        case 8: text = L"+10% Dodge\nChance"; color = sf::Color(40, 120, 120); break;
-        case 9: text = L"-20% Crossbow\nCooldown"; color = sf::Color(150, 100, 50); break;
-        case 10: text = L"Regeneration\n+1 HP every\n5 seconds"; color = sf::Color(50, 150, 50); break;
-        case 11: text = L"Fire Aura\n(Unlock / Expand)"; color = sf::Color(200, 80, 0); break;
-        case 12: text = L"Orbiting Sword\n(Unlock / Faster)"; color = sf::Color(0, 150, 200); break;
-        case 13: text = L"Magic Wand\n(Unlock / Upgrade)"; color = sf::Color(120, 0, 200); break;
+        case 0: color = sf::Color(50, 100, 50); break;
+        case 1: color = sf::Color(50, 50, 100); break;
+        case 2: color = sf::Color(100, 50, 50); break;
+        case 3: color = sf::Color(120, 40, 40); break;
+        case 4: color = sf::Color(100, 100, 30); break;
+        case 5: color = sf::Color(100, 50, 100); break;
+        case 6: color = sf::Color(140, 20, 50); break;
+        case 7: color = sf::Color(100, 100, 150); break;
+        case 8: color = sf::Color(40, 120, 120); break;
+        case 9: color = sf::Color(150, 100, 50); break;
+        case 10: color = sf::Color(50, 150, 50); break;
+        case 11: color = sf::Color(200, 80, 0); break;
+        case 12: color = sf::Color(0, 150, 200); break;
+        case 13: color = sf::Color(120, 0, 200); break;
+        default: color = sf::Color::White; break;
         }
 
         if(i == 0) { textCard1.setString(text); card1.setFillColor(color); }
         else if(i == 1) { textCard2.setString(text); card2.setFillColor(color); }
         else if(i == 2) { textCard3.setString(text); card3.setFillColor(color); }
-    }    
+    }
 }
 
 void UIManager::drawBossHealthBar(sf::RenderWindow& window, int currentHp, int maxHp, const std::string& bossName) {

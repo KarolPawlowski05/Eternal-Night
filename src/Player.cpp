@@ -2,6 +2,7 @@
 #include "Config.h"
 #include <algorithm>
 #include<AssetManager.h>
+#include<UIManager.h>
 
 // Konstruktor
 Player::Player(float x, float y)
@@ -241,7 +242,7 @@ void Player::update(float deltaTime) {
     // Pasywna regeneracja zdrowia
     if (stats.hpRegenRate > 0) {
         stats.hpRegenTimer += deltaTime;
-        if (stats.hpRegenTimer >= 5.0f) { // Co 5 sekund
+        if (stats.hpRegenTimer >= 3.0f) { // Co 3 sekundy
             heal(stats.hpRegenRate);
             stats.hpRegenTimer = 0.f;
         }
@@ -467,40 +468,76 @@ void Player::addXp(int amount) {
 }
 
 void Player::applyUpgrade(int choice) {
+
+    // Współczynnik skalowania w zależności od fali
+    // Na fali 1-5: x1.0, na fali 10: x1.125, na fali 20: x1.375
+    float waveMultiplier = 1.0f + ((progression.level - 1) * 0.025f);
+    if (waveMultiplier > 2.0f) waveMultiplier = 2.0f; // Cap na 2.0x
+
     switch (choice) {
-    case 0: health.maxHp += 20; health.hp = health.maxHp; break;
-    case 1: movement.speed *= 1.15f; break;
-    case 2: combat.attackCooldown *= 0.90f; break;
-    case 3: stats.damageBonus += 5; break;
-    case 4: stats.armor += 2; break;
-    case 5: stats.critChance += 0.05f; break;
-    case 6: stats.vampirismChance += 0.05f; break;
-    case 7: stats.pickupRadiusBonus += 40.f; break;
-    case 8: stats.dodgeChance += 0.10f; break;
-    case 9: combat.specialCooldown *= 0.80f; break;
-    case 10: stats.hpRegenRate += 1; break;
-    case 11: // AURA OGNIA
-        if (!weapons.hasFireAura) { weapons.hasFireAura = true; }
-        else { weapons.fireAuraRadius += 25.f; weapons.fireAuraShape.setRadius(weapons.fireAuraRadius); weapons.fireAuraShape.setOrigin(weapons.fireAuraRadius, weapons.fireAuraRadius); }
+    case 0: // HP
+        health.maxHp += static_cast<int>(20 * waveMultiplier);
+        health.hp = health.maxHp;
         break;
-    case 12: // ORBITUJĄCE OSTRZE
-        if (!weapons.hasOrbitingSword) {
-            weapons.hasOrbitingSword = true;
-            weapons.swordCount = 1; // Pierwszy miecz
-        } else {
-            weapons.swordCount++; // Dodaje kolejny miecz do okręgu
-            weapons.orbitSpeed += 10.f; // Lekko przyspiesza przy okazji
+    case 1: // Speed
+        movement.speed *= 1.15f;
+        break;
+    case 2: // Attack Speed
+        combat.attackCooldown *= 0.90f;
+        break;
+    case 3: // DMG
+        stats.damageBonus += static_cast<int>(5 * waveMultiplier);
+        break;
+    case 4: // Armor
+        stats.armor += static_cast<int>(2 * waveMultiplier);
+        break;
+    case 5: // Crit Chance
+        stats.critChance += 0.05f;
+        break;
+    case 6: // Vampirism
+        stats.vampirismChance += 0.03f;
+        break;
+    case 7: // Pickup Radius
+        stats.pickupRadiusBonus += 40.f;
+        break;
+    case 8: // Dodge
+        stats.dodgeChance += 0.10f;
+        break;
+    case 9: // Special Cooldown
+        combat.specialCooldown *= 0.80f;
+        break;
+    case 10: // HP Regen
+        stats.hpRegenRate += static_cast<int>(1 * waveMultiplier);
+        break;
+    case 11: // Fire Aura
+        if (!weapons.hasFireAura) { weapons.hasFireAura = true; }
+        else {
+            weapons.fireAuraRadius += 10.f;
+            weapons.fireAuraShape.setRadius(weapons.fireAuraRadius);
+            weapons.fireAuraShape.setOrigin(weapons.fireAuraRadius, weapons.fireAuraRadius);
         }
         break;
-    case 13: // RÓŻDŻKA
+    case 12: // Orbiting Sword
+        if (!weapons.hasOrbitingSword) {
+            weapons.hasOrbitingSword = true;
+            weapons.swordCount = 1;
+        } else {
+            weapons.swordCount++;
+            weapons.orbitSpeed += 3.f;
+        }
+        break;
+    case 13: // Wand
         if (!weapons.hasWand) { weapons.hasWand = true; }
         else {
-            weapons.wandCooldown *= 0.85f;      // -15% cooldown
-            weapons.wandProjectiles += 1;       // +1 pocisk
-            weapons.wandDamageBonus += 3;       // +3 dmg
+            weapons.wandCooldown *= 0.85f;
+            weapons.wandProjectiles += 1;
+            weapons.wandDamageBonus += static_cast<int>(2 * waveMultiplier);
         }
         break;
     }
+
+    // Capy po każdym upgrade
+    clampStats();
 
 }
 
@@ -530,6 +567,177 @@ void Player::triggerVampirism() {
         if (isVamp) {
             heal(2); // Drobne uleczenie po zabójstwie
         }
+    }
+}
+//Automatyczne skalowanie gracza przy levelupie
+void Player::applyLevelUpBonuses() {
+    // Skalowanie rośnie z każdą falą
+    //na fali 1-5 normalne bonusy potem rośnie
+    float waveScaling = 1.0f;
+    if (progression.level > 5) {
+        waveScaling = 1.0f + ((progression.level - 5) * 0.015f);
+    }
+
+    // Automatyczne bonusy za level up
+    stats.hpMultiplier = waveScaling;
+    stats.dmgMultiplier = waveScaling;
+
+    // HP scaling: ~8 HP per level na wczesnych falach
+    int hpBonus = static_cast<int>(8.f * waveScaling);
+    health.maxHp += hpBonus;
+    if(health.maxHp > StatsData::MAX_HP) health.maxHp = StatsData::MAX_HP;  // HARD CAP
+
+    // DMG scaling: +0.5 dmg per level rośnie z falą
+    int dmgBonus = static_cast<int>(0.5f * waveScaling);
+    stats.damageBonus += dmgBonus;
+
+    // Małe bonusy do obrony i szybkości dla balansu
+    stats.armor += 1;
+    movement.speed *= 1.01f;
+
+
+    clampStats();
+}
+
+// Capy na statystykach
+void Player::clampStats() {
+    // Szansa na krytyk
+    if (stats.critChance > StatsData::MAX_CRIT_CHANCE) {
+        stats.critChance = StatsData::MAX_CRIT_CHANCE;
+    }
+
+    // Vampiryzm (maks 30%)
+    if (stats.vampirismChance > StatsData::MAX_VAMPIRISM_CHANCE) {
+        stats.vampirismChance = StatsData::MAX_VAMPIRISM_CHANCE;
+    }
+
+    // Unik (maks 60%)
+    if (stats.dodgeChance > StatsData::MAX_DODGE_CHANCE) {
+        stats.dodgeChance = StatsData::MAX_DODGE_CHANCE;
+    }
+
+    // Pancerz (maks 100)
+    if (stats.armor > StatsData::MAX_ARMOR) {
+        stats.armor = StatsData::MAX_ARMOR;
+    }
+
+    // Szybkość ataku (maks cooldown 0.1s)
+    if (combat.attackCooldown < StatsData::MAX_ATTACK_SPEED) {
+        combat.attackCooldown = StatsData::MAX_ATTACK_SPEED;
+    }
+
+    // Szybkość gracza (maks 800 px/s)
+    if (movement.speed > StatsData::MAX_SPEED) {
+        movement.speed = StatsData::MAX_SPEED;
+    }
+
+    // Regeneracja HP
+    if (stats.hpRegenRate > StatsData::MAX_HP_REGEN_RATE) {
+        stats.hpRegenRate = StatsData::MAX_HP_REGEN_RATE;
+    }
+
+    // Zasięg zbierania
+    if (stats.pickupRadiusBonus > StatsData::MAX_PICKUP_RADIUS) {
+        stats.pickupRadiusBonus = StatsData::MAX_PICKUP_RADIUS;
+    }
+    // Hard cap na HP
+    if (health.maxHp > StatsData::MAX_HP) {
+        health.maxHp = StatsData::MAX_HP;
+        if (health.hp > health.maxHp) health.hp = health.maxHp;
+    }
+}
+bool Player::isStatAtCap(int upgradeChoice) const {
+    switch (upgradeChoice) {
+    case 5: // Crit Chance
+        return stats.critChance >= StatsData::MAX_CRIT_CHANCE;
+    case 6: // Vampirism
+        return stats.vampirismChance >= StatsData::MAX_VAMPIRISM_CHANCE;
+    case 8: // Dodge Chance
+        return stats.dodgeChance >= StatsData::MAX_DODGE_CHANCE;
+    case 4: // Armor
+        return stats.armor >= StatsData::MAX_ARMOR;
+    case 2: // Attack Speed (cooldown)
+        return combat.attackCooldown <= StatsData::MAX_ATTACK_SPEED;
+    case 1: // Speed
+        return movement.speed >= StatsData::MAX_SPEED;
+    case 10: // HP Regen
+        return stats.hpRegenRate >= StatsData::MAX_HP_REGEN_RATE;
+    case 7: // Pickup Radius
+        return stats.pickupRadiusBonus >= StatsData::MAX_PICKUP_RADIUS;
+    default:
+        return false;
+    }
+}
+
+// Oblicz rzeczywistą wartość upgrade'u
+int Player::getUpgradeValue(int upgradeChoice) const {
+    // Współczynnik skalowania w zależności od fali
+    float waveMultiplier = 1.0f + ((progression.level - 1) * 0.05f);
+    if (waveMultiplier > 3.0f) waveMultiplier = 3.0f;
+
+    switch (upgradeChoice) {
+    case 0: return static_cast<int>(20 * waveMultiplier);  // HP
+    case 3: return static_cast<int>(5 * waveMultiplier);   // DMG
+    case 4: return static_cast<int>(2 * waveMultiplier);   // Armor
+    case 10: return static_cast<int>(1 * waveMultiplier);  // Regen
+    case 13: return static_cast<int>(3 * waveMultiplier);  // Wand DMG
+    default: return 0;
+    }
+}
+
+// Generuje dynamiczny opis upgrade
+std::wstring Player::getUpgradeDescription(int upgradeChoice) const {
+    // Współczynnik skalowania
+    float waveMultiplier = 1.0f + ((progression.level - 1) * 0.05f);
+    if (waveMultiplier > 3.0f) waveMultiplier = 3.0f;
+
+    // Informacja o capie jeśli stat już jest na limicie
+    std::wstring capWarning = L"";
+    if (isStatAtCap(upgradeChoice)) {
+        capWarning = L" [MAX]";
+    }
+
+    switch (upgradeChoice) {
+    case 0: {
+        int val = static_cast<int>(20 * waveMultiplier);
+        return L"+" + std::to_wstring(val) + L" Max HP\n& Heal" + capWarning;
+    }
+    case 1:
+        return L"+15% Movement\nSpeed" + capWarning;
+    case 2:
+        return L"-10% Attack\nCooldown" + capWarning;
+    case 3: {
+        int val = static_cast<int>(5 * waveMultiplier);
+        return L"+" + std::to_wstring(val) + L" Attack\nDamage";
+    }
+    case 4: {
+        int val = static_cast<int>(2 * waveMultiplier);
+        return L"+" + std::to_wstring(val) + L" Armor\nPoints" + capWarning;
+    }
+    case 5:
+        return L"+5% Critical\nHit Chance" + capWarning;
+    case 6:
+        return L"+5% Heal Chance\n(2 HP) on kill" + capWarning;
+    case 7:
+        return L"+ Pickup\nRadius\n(Magnet)" + capWarning;
+    case 8:
+        return L"+10% Dodge\nChance" + capWarning;
+    case 9:
+        return L"-20% Crossbow\nCooldown";
+    case 10: {
+        int val = static_cast<int>(1 * waveMultiplier);
+        return L"Regeneration\n+" + std::to_wstring(val) + L" HP/3s" + capWarning;
+    }
+    case 11:
+        return L"Fire Aura\n(Unlock / Expand)";
+    case 12:
+        return L"Orbiting Sword\n(Unlock / Faster)";
+    case 13: {
+        int val = static_cast<int>(3 * waveMultiplier);
+        return L"Magic Wand\n(Unlock / +\n" + std::to_wstring(val) + L" DMG)";
+    }
+    default:
+        return L"Unknown";
     }
 }
 std::vector<sf::FloatRect> Player::getOrbitingSwordsBounds() const {

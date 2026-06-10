@@ -147,7 +147,6 @@ void Engine::handleEvents() {
                 nameSaved = true; // Flaga, żeby nie dało się zapisać dwa razy
             }
         }
-
         // Obsługa ekranu wyników
         if (currentState == GameState::SCORES) {
             if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left) {
@@ -332,7 +331,7 @@ void Engine::update(float deltaTime) {
     }
 
     if(player->checkLevelUp()) {
-        uiManager.generateUpgrades();
+        uiManager.generateUpgrades(player);
         currentState = GameState::LEVEL_UP;
         player->acknowledgeLevelUp();
     }
@@ -345,6 +344,34 @@ void Engine::update(float deltaTime) {
     }
 
     mapManager.update(player, entityManager.getEntities());
+    // Respawnianie potionów co 3 fale
+    if(waveManager && waveManager->shouldRespawnPotions()) {
+        bool isColliding = true;
+        std::shared_ptr<Bonus> newPotion;
+
+        // Spróbuj znaleźć wolne miejsce (maks 20 prób)
+        int attempts = 0;
+        while (isColliding && attempts < 20) {
+            float randX = (rand() % 4000) - 2000 + player->getPosition().x;
+            float randY = (rand() % 4000) - 2000 + player->getPosition().y;
+            newPotion = std::make_shared<Bonus>(randX, randY, BonusType::POTION);
+
+            isColliding = false;
+            for (const auto& obj : entityManager.getEntities()) {
+                if (newPotion->getBounds().intersects(obj->getBounds())) {
+                    isColliding = true;
+                    break;
+                }
+            }
+            attempts++;
+        }
+
+        if (!isColliding && newPotion) {
+            entityManager.addEntity(newPotion);
+        }
+
+        waveManager->acknowledgeSpawnedPotions();
+    }
 }
 
 void Engine::render() {
