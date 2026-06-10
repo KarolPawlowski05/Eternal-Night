@@ -21,8 +21,8 @@ Obstacle::Obstacle(float x, float y, ObstacleType obsType) : GameObject(x, y), t
         }
     }
     // 1. LOSOWA SKALA (od 0.7x do 1.3x)
-    float randomScale = 0.7f + static_cast<float>(rand()) / (static_cast<float>(RAND_MAX / 0.6f));
-    sprite.setScale(randomScale, randomScale);
+    scale = 0.7f + static_cast<float>(rand()) / (static_cast<float>(RAND_MAX / 0.6f));
+    sprite.setScale(scale, scale);
 
     // 2. LOSOWY ODCIEŃ (Tinting)
     if (type == ObstacleType::TREE || type == ObstacleType::BUSH) {
@@ -69,11 +69,11 @@ void Obstacle::draw(sf::RenderWindow& window) {
 
 sf::FloatRect Obstacle::getBounds() const {
     if(type == ObstacleType::TREE) {
-        return sf::FloatRect(position.x - 13.f, position.y + 60.f, 28.f, 35.f);
+        return sf::FloatRect(position.x - (13.f * scale), position.y + (60.f * scale), 28.f * scale, 35.f * scale);
     } else if(type == ObstacleType::BUSH) {
-        return sf::FloatRect(position.x - 21.f, position.y - 21.f, 43.f, 47.f);
+        return sf::FloatRect(position.x - (21.f * scale), position.y - (21.f * scale), 43.f * scale, 47.f * scale);
     } else if(type == ObstacleType::ROCK) {
-        return sf::FloatRect(position.x - 15.f, position.y - 15.f, 30.f, 30.f);
+        return sf::FloatRect(position.x - (15.f * scale), position.y - (15.f * scale), 30.f * scale, 30.f * scale);
     }
     return sf::FloatRect();
 }

@@ -12,6 +12,8 @@ private:
     sf::Sprite sprite;
     ObstacleType type;
 
+    float scale;
+
     // Jeśli tekstura sie nie wczyta
     sf::RectangleShape fallbackShape;
     bool textureLoaded;
