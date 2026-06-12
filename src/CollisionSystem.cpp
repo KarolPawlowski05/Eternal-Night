@@ -6,6 +6,7 @@
 #include "Obstacle.h"
 #include "Boss.h"
 #include "DamageNumber.h"
+#include "Config.h"
 #include <cmath>
 #include <cstdlib>
 #include <queue>
@@ -162,7 +163,7 @@ void CollisionSystem::update(std::shared_ptr<Player>& player, std::vector<std::s
                 float length = std::hypot(dir.x, dir.y);
                 if(length > 0 && length < 500.f){
                     dir /= length;
-                    newObjects.push_back(std::make_shared<Projectile>(enemy->getPosition().x, enemy->getPosition().y, dir, 200.0f, true));
+                    newObjects.push_back(std::make_shared<Projectile>(enemy->getPosition().x, enemy->getPosition().y, dir, 200.0f, true, false, TexturePaths::PROJ_OGRE_ROCK));
                 }
             }
         }

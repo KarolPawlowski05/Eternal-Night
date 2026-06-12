@@ -14,6 +14,10 @@ enum class BossType { ROOT_STRANGLER, STORM_WRAITH, VAMPIRE_PRINCE, CHAOS_GOLEM 
 class Boss : public GameObject {
 private:
     sf::RectangleShape sprite;
+    std::shared_ptr<sf::Texture> bossTexture;
+    sf::Sprite bossSprite;
+    bool textureLoaded;
+
     BossType type;
     std::shared_ptr<Player> target;
 
@@ -51,6 +55,14 @@ private:
     std::vector<sf::Vector2f> minionPositions; // Dla statycznych kryształów
 
     std::vector<std::shared_ptr<GameObject>> pendingSpawns;
+
+    // --- Pomocnicze ---
+
+    // Aplikuje kolor na obie reprezentacje wizualne (sprite + kształt zapasowy)
+    void setSpriteColor(const sf::Color& color);
+
+    // Zwraca ścieżkę do tekstury pocisku dla danego bossa (z TexturePaths w Config.h)
+    const char* getProjectileTexturePath() const;
 
 public:
     Boss(float x, float y, BossType type, std::shared_ptr<Player> player, float scalingMultiplier);

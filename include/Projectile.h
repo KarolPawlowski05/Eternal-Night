@@ -4,6 +4,7 @@
 #include "GameObject.h"
 #include <cmath>
 #include <memory>
+#include <string>
 
 class Projectile : public GameObject {
 private:
@@ -18,7 +19,7 @@ private:
     float distanceTraveled = 0.f;
 
 public:
-Projectile(float startX, float startY, sf::Vector2f direction, float customSpeed = 1000.f, bool enemy = false, bool wand = false);
+Projectile(float startX, float startY, sf::Vector2f direction, float customSpeed = 1000.f, bool enemy = false, bool wand = false, const std::string& texturePath = "");
 
     void update(float deltaTime) override;
     void draw(sf::RenderWindow& window) override;

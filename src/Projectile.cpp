@@ -1,23 +1,34 @@
 #include "Projectile.h"
 #include "AssetManager.h"
 
-Projectile::Projectile(float startX, float startY, sf::Vector2f direction, float customSpeed, bool enemy, bool wand)
-    : GameObject(startX, startY), speed(customSpeed), isEnemyOwned(enemy), isWand(wand),
-    hasTarget(false), distanceTraveled(0.f) {
+Projectile::Projectile(float startX, float startY, sf::Vector2f direction, float customSpeed, bool enemy, bool wand, const std::string& texturePath)
+    : GameObject(startX, startY), speed(customSpeed), isEnemyOwned(enemy), isWand(wand), hasTarget(false), distanceTraveled(0.f) {
 
     velocity = direction * speed;
 
     if (isEnemyOwned) {
         // Głaz ogra
-        auto rockTexture = std::make_shared<sf::Texture>();
-        rockTexture->create(16, 16);
-        sf::Image img;
-        img.create(16, 16, sf::Color(139, 69, 19)); // Brązowy kolor
-        rockTexture->loadFromImage(img);
+        if (!texturePath.empty()) {
+            auto customTex = AssetManager::loadTexture(texturePath);
+            if (customTex) {
+                arrowTexture = customTex;
+                arrowSprite.setTexture(*arrowTexture);
+                sf::FloatRect lb = arrowSprite.getLocalBounds();
+                arrowSprite.setOrigin(lb.width / 2.f, lb.height / 2.f);
+            }
+        }
 
-        arrowTexture = rockTexture;
-        arrowSprite.setTexture(*arrowTexture);
-        arrowSprite.setOrigin(8.f, 8.f);
+        if(!arrowTexture) {
+            auto rockTexture = std::make_shared<sf::Texture>();
+            rockTexture->create(16, 16);
+            sf::Image img;
+            img.create(16, 16, sf::Color(139, 69, 19)); // Brązowy kolor
+            rockTexture->loadFromImage(img);
+
+            arrowTexture = rockTexture;
+            arrowSprite.setTexture(*arrowTexture);
+            arrowSprite.setOrigin(8.f, 8.f);
+        }
     } else if (isWand) {
         // Różdżka
         auto wandTexture = std::make_shared<sf::Texture>();

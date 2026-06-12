@@ -54,4 +54,25 @@ namespace UIConfig {
     constexpr float HUD_STATS_Y = 58.f;
 }
 
+namespace TexturePaths {
+
+// --- Bossowie ---
+constexpr const char* BOSS_ROOT_STRANGLER   = "assets/enemies/bosses/rootStrangler.png";
+constexpr const char* BOSS_STORM_WRAITH     = "assets/enemies/bosses/stormWraith.png";
+constexpr const char* BOSS_VAMPIRE_PRINCE   = "assets/enemies/bosses/vampirePrince.png";
+constexpr const char* BOSS_CHAOS_GOLEM      = "assets/enemies/bosses/chaosGolem.png";
+
+// --- Pociski bossów (jeden sprite na typ bossa) ---
+constexpr const char* PROJ_ROOT_STRANGLER   = "assets/projectiles/projRoot.png";
+constexpr const char* PROJ_STORM_WRAITH     = "assets/projectiles/projLightning.png";
+constexpr const char* PROJ_VAMPIRE_PRINCE   = "assets/projectiles/projBlood.png";
+constexpr const char* PROJ_CHAOS_GOLEM      = "assets/projectiles/projStone.png";
+
+// --- Pociski zwykłych wrogów ---
+constexpr const char* PROJ_OGRE_ROCK        = "assets/projectiles/projStone.png";
+
+// --- Collectibles ---
+constexpr const char* BONUS_POTION          = "assets/map/collectibles/potion.png";
+}
+
 #endif
