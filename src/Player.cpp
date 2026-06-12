@@ -1,8 +1,8 @@
 #include "Player.h"
 #include "Config.h"
 #include <algorithm>
-#include<AssetManager.h>
-#include<UIManager.h>
+#include <AssetManager.h>
+#include <UIManager.h>
 
 // Konstruktor
 Player::Player(float x, float y)
@@ -331,11 +331,31 @@ void Player::update(float deltaTime) {
         AssetManager::playSound("assets/audio/sfx/dash.wav");
     }
 
+    // Zanikanie ghostów
+    for (auto& g : dashGhosts) {
+        g.alpha -= 600.f * deltaTime;
+        sf::Color c = g.sprite.getColor();
+        c.a = static_cast<sf::Uint8>(std::max(0.f, g.alpha));
+        g.sprite.setColor(c);
+    }
+    dashGhosts.erase(std::remove_if(dashGhosts.begin(), dashGhosts.end(), [](const GhostFrame& g){ return g.alpha <= 0.f; }), dashGhosts.end());
+
     // Ruch gracza
     sf::Vector2f movement_vec(0.f, 0.f);
     bool isMoving = false;
 
     if(movement.isDashing) {
+        // Ghost trail
+        ghostSpawnTimer += deltaTime;
+        if (ghostSpawnTimer >= 0.04f) {
+            ghostSpawnTimer = 0.f;
+            GhostFrame ghost;
+            ghost.sprite = animation.showAttackAnim ? animation.attackSprite : animation.sprite;
+            ghost.sprite.setPosition(position);
+            ghost.alpha = 180.f;
+            dashGhosts.push_back(ghost);
+        }
+
         position += movement.lastDirection * movement.dashSpeed * deltaTime;
         sf::Color dashColor(180, 180, 255, 200);
         animation.sprite.setColor(dashColor);
@@ -441,6 +461,7 @@ void Player::update(float deltaTime) {
 }
 
 void Player::draw(sf::RenderWindow& window) {
+    for(auto& g : dashGhosts) window.draw(g.sprite);
     window.draw(health.hpBarBackground);
     window.draw(health.hpBarForeground);
     window.draw(health.attackCooldownBarBackground);

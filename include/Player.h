@@ -19,6 +19,14 @@ private:
 
     bool godMode;
 
+    // Ghost trail podczas dasha
+    struct GhostFrame {
+        sf::Sprite sprite;
+        float alpha;
+    };
+    std::vector<GhostFrame> dashGhosts;
+    float ghostSpawnTimer = 0.f;
+
     // Metody pomocnicze
     void loadTextures();
     void updateAnimation(const sf::Vector2f& movement, bool isMoving, float deltaTime);

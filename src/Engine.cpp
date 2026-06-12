@@ -74,6 +74,23 @@ void Engine::handleEvents() {
                 player->toggleGodMode();
             }
         }
+        // Wybieranie upgrade'u za pomocą 1,2,3
+        if(currentState == GameState::LEVEL_UP && event.type == sf::Event::KeyPressed) {
+            int upgrade = -1;
+            if(event.key.code == sf::Keyboard::Num1)
+                upgrade = uiManager.getOfferedUpgrade(0);
+            else if (event.key.code == sf::Keyboard::Num2)
+                upgrade = uiManager.getOfferedUpgrade(1);
+            else if (event.key.code == sf::Keyboard::Num3)
+                upgrade = uiManager.getOfferedUpgrade(2);
+
+            if (upgrade != -1) {
+                AssetManager::playSound("assets/audio/sfx/upgradeSelect.wav");
+                player->applyUpgrade(upgrade);
+                currentState = GameState::PLAYING;
+            }
+        }
+
         // OBSŁUGA MYSZKI W ZALEŻNOŚCI OD EKRANU
         if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left) {
             sf::Vector2f mousePos = window.mapPixelToCoords(sf::Mouse::getPosition(window),window.getDefaultView());
@@ -460,6 +477,7 @@ void Engine::render() {
         if (waveManager && waveManager->getActiveBoss() != nullptr) {
             auto boss = waveManager->getActiveBoss();
             uiManager.drawBossHealthBar(window, boss->getHp(), boss->getMaxHp(), boss->getName());
+            uiManager.drawBossDirectionArrow(window, player->getPosition(), boss->getPosition());
         }
 
         if      (currentState == GameState::LEVEL_UP)   uiManager.renderLevelUp(window);

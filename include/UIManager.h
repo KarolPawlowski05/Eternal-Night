@@ -15,6 +15,9 @@ private:
     sf::RectangleShape xpBarBackground, xpBarForeground, xpBarBorder;
     sf::Text xpLevelText;
 
+    // Strzałka bossa
+    sf::Sprite bossArrowSprite;
+
     // HUD (Timer, zabójstwa, statystyki)
     sf::Text timerText;
     sf::Text killCountText;
@@ -95,10 +98,15 @@ public:
 
     // Zwraca ID ulepszenia (lub -1, jeśli nie kliknięto żadnej karty)
     int getClickedUpgrade(sf::Vector2f pos) const;
+    int getOfferedUpgrade(int index) const;
 
     const sf::Font& getFont() const { return font; }
     // Wyświetlanie paska życia bossa
     void drawBossHealthBar(sf::RenderWindow& window, int currentHp, int maxHp, const std::string& bossName);
+
+    // Strzałka wskazująca bossa poza ekranem
+    void drawBossDirectionArrow(sf::RenderWindow& window, sf::Vector2f playerPos, sf::Vector2f bossPos);
+
     // Muzyka
     bool isMusicMinusClicked(sf::Vector2f pos) const;
     bool isMusicPlusClicked(sf::Vector2f pos) const;

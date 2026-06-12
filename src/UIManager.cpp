@@ -48,6 +48,14 @@ UIManager::UIManager() {
             sprite.setScale(3.f, 3.f); // Powiększenie sprite'a
         };
 
+        // Wskaźnik bossa
+        auto arrowTex = AssetManager::loadTexture("assets/enemies/bosses/bossIndicator.png");
+        if (arrowTex) {
+            bossArrowSprite.setTexture(*arrowTex);
+            sf::FloatRect bounds = bossArrowSprite.getLocalBounds();
+            bossArrowSprite.setOrigin(bounds.left + bounds.width / 2.f, bounds.top + bounds.height / 2.f);
+        }
+
         // Menu główne
         setupButton(btnStartSprite, texGreen.get(), 160, 47, 32, 17, 640.f, 280.f);     // START
         setupButton(btnOptionsSprite, texPurple.get(), 0, 96, 48, 16, 640.f, 360.f);  // OPTIONS
@@ -168,6 +176,11 @@ int UIManager::getClickedUpgrade(sf::Vector2f pos) const {
     if(card1.getGlobalBounds().contains(pos)) return offeredUpgrades[0];
     if(card2.getGlobalBounds().contains(pos)) return offeredUpgrades[1];
     if(card3.getGlobalBounds().contains(pos)) return offeredUpgrades[2];
+    return -1;
+}
+
+int UIManager::getOfferedUpgrade(int index) const {
+    if(index >= 0 && index < 3) return offeredUpgrades[index];
     return -1;
 }
 
@@ -293,9 +306,23 @@ void UIManager::renderLevelUp(sf::RenderWindow &window) {
     overlay.setFillColor(sf::Color(0, 0, 0, 200));
     window.draw(overlay);
 
-    window.draw(card1); window.draw(textCard1);
-    window.draw(card2); window.draw(textCard2);
-    window.draw(card3); window.draw(textCard3);
+    // Podświetlenie karty pod kursorem
+    sf::Vector2f mousePos = static_cast<sf::Vector2f>(sf::Mouse::getPosition(window));
+    auto highlight = [&](sf::RectangleShape& card) {
+        if(card.getGlobalBounds().contains(mousePos)) {
+            sf::RectangleShape glow = card;
+            glow.setOutlineColor(sf::Color(255, 220, 0, 200));
+            glow.setOutlineThickness(3.f);
+            glow.setFillColor(sf::Color(card.getFillColor().r + 40, card.getFillColor().g + 40, card.getFillColor().b + 40));
+            window.draw(glow);
+        } else {
+            window.draw(card);
+        }
+    };
+
+    highlight(card1); window.draw(textCard1);
+    highlight(card2); window.draw(textCard2);
+    highlight(card3); window.draw(textCard3);
     window.draw(textTitle);
 }
 
@@ -322,7 +349,7 @@ void UIManager::renderGameOver(sf::RenderWindow &window, int score, const std::s
     statsText.setFont(font);
     statsText.setCharacterSize(20);
     statsText.setFillColor(sf::Color(200, 200, 200));
-    statsText.setString("Time: " + timeStr = "    Level: " + std::to_string(level) + "    Kills: " + std::to_string(kills));
+    statsText.setString("Time: " + timeStr + "    Level: " + std::to_string(level) + "    Kills: " + std::to_string(kills));
     sf::FloatRect stb = statsText.getLocalBounds();
     statsText.setOrigin(stb.left + stb.width / 2.f, stb.top + stb.height / 2.f);
     statsText.setPosition(640.f, 345.f);
@@ -512,6 +539,41 @@ void UIManager::drawBossHealthBar(sf::RenderWindow& window, int currentHp, int m
 
     window.setView(prevView);
 }
+
+void UIManager::drawBossDirectionArrow(sf::RenderWindow& window, sf::Vector2f playerPos, sf::Vector2f bossPos) {
+    // Kierunek do bossa
+    sf::Vector2f dir = bossPos - playerPos;
+    float dist = std::sqrt(dir.x * dir.x + dir.y * dir.y);
+    if(dist < 600.f) return;
+    dir /= dist;
+
+    // Środek ekranu + przesunięcie
+    float margin = 60.f;
+    sf::Vector2f screenCenter(640.f, 360.f);
+    sf::Vector2f arrowPos = screenCenter + dir * 280.f;
+
+    // Ograniczenie do ekranu
+    arrowPos.x = std::max(margin, std::min(1280.f - margin, arrowPos.x));
+    arrowPos.y = std::max(margin, std::min(720.f - margin, arrowPos.y));
+
+    // Strzałka
+    float angle = std::atan2(dir.y, dir.x) * 180.f / 3.14159f + 90.f;
+    bossArrowSprite.setRotation(angle);
+    bossArrowSprite.setPosition(arrowPos);
+    window.draw(bossArrowSprite);
+
+    // Tekst z dystansem
+    sf::Text distText;
+    distText.setFont(font);
+    distText.setCharacterSize(13);
+    distText.setFillColor(sf::Color(255, 150, 150));
+    distText.setString(std::to_string(static_cast<int>(dist)) + "px");
+    sf::FloatRect tb = distText.getLocalBounds();
+    distText.setOrigin(tb.width / 2.f, 0.f);
+    distText.setPosition(arrowPos.x, arrowPos.y + 14.f);
+    window.draw(distText);
+}
+
 void UIManager::renderOptions(sf::RenderWindow& window) {
     // Rysujemy tło z menu głównego dla spójności
     window.draw(menuBackgroundSprite);
