@@ -20,6 +20,9 @@ Engine::Engine() {
 
     // Debug
     debugMode = false;
+
+    // Muzyka
+    AssetManager::playMusic("assets/audio/music/bgMusic.ogg");
 }
 
 void Engine::handleEvents() {
@@ -36,6 +39,8 @@ void Engine::handleEvents() {
                 currentState = GameState::PLAYING; // Wyłącz pauzę (wznów)
             } else if (currentState == GameState::MAIN_MENU) {
                 window.close(); // Wyjdź z gry tylko z poziomu menu głównego
+            }else if (currentState == GameState::OPTIONS || currentState == GameState::SCORES) {
+                currentState = GameState::MAIN_MENU;
             }
         }
         // Obsługa debug
@@ -78,7 +83,12 @@ void Engine::handleEvents() {
                     AssetManager::playSound("assets/audio/sfx/buttonClick.wav");
                     resetGame();
                     currentState = GameState::PLAYING;
-                } else if (uiManager.isQuitClicked(mousePos)) {
+                }
+                else if (uiManager.isOptionsClicked(mousePos)) {
+                    AssetManager::playSound("assets/audio/sfx/buttonClick.wav");
+                    currentState = GameState::OPTIONS;
+                }
+                else if (uiManager.isQuitClicked(mousePos)) {
                     AssetManager::playSound("assets/audio/sfx/buttonClick.wav");
                     window.close();
                 } else if (uiManager.isScoresClicked(mousePos)) {
@@ -96,6 +106,21 @@ void Engine::handleEvents() {
                 }
                 // Kontrolki głośności
                 else if (uiManager.isMusicMinusClicked(mousePos)) {
+                    AssetManager::playSound("assets/audio/sfx/buttonClick.wav");
+                    AssetManager::setMusicVolume(AssetManager::getMusicVolume() - 10.f);
+                } else if (uiManager.isMusicPlusClicked(mousePos)) {
+                    AssetManager::playSound("assets/audio/sfx/buttonClick.wav");
+                    AssetManager::setMusicVolume(AssetManager::getMusicVolume() + 10.f);
+                } else if (uiManager.isSfxMinusClicked(mousePos)) {
+                    AssetManager::setSfxVolume(AssetManager::getSfxVolume() - 10.f);
+                    AssetManager::playSound("assets/audio/sfx/buttonClick.wav");
+                } else if (uiManager.isSfxPlusClicked(mousePos)) {
+                    AssetManager::setSfxVolume(AssetManager::getSfxVolume() + 10.f);
+                    AssetManager::playSound("assets/audio/sfx/buttonClick.wav");
+                }
+            }
+            else if (currentState == GameState::OPTIONS) {
+                if (uiManager.isMusicMinusClicked(mousePos)) {
                     AssetManager::playSound("assets/audio/sfx/buttonClick.wav");
                     AssetManager::setMusicVolume(AssetManager::getMusicVolume() - 10.f);
                 } else if (uiManager.isMusicPlusClicked(mousePos)) {
@@ -397,7 +422,10 @@ void Engine::render() {
         uiManager.renderMainMenu(window);
     } else if(currentState == GameState::SCORES) {
         uiManager.renderScores(window, scoreManager.loadScores());
-    } else {
+    } else if (currentState == GameState::OPTIONS) {
+        uiManager.renderOptions(window);
+    }
+    else {
         //  KAMERA ŚWIATA (Podąża za graczem)
         gameView.setSize(1280.f, 720.f);
         sf::Vector2f viewCenter = player->getPosition();

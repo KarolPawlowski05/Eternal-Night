@@ -10,7 +10,7 @@
 #include "CollisionSystem.h"
 #include "EntityManager.h"
 
-enum class GameState { MAIN_MENU, PLAYING, LEVEL_UP, GAME_OVER, PAUSED, SCORES };
+enum class GameState { MAIN_MENU, PLAYING, LEVEL_UP, GAME_OVER, PAUSED, SCORES, OPTIONS };
 class Player;
 
 class Engine {

@@ -260,7 +260,16 @@ void CollisionSystem::update(std::shared_ptr<Player>& player, std::vector<std::s
         if(bonus) {
             if(player->getPickupBounds().intersects(bonus->getBounds())) {
                 if(bonus->getType() == BonusType::POTION) {
+                    // Zapisujemy HP przed leczeniem
+                    int hpBefore = player->getHp();
                     player->healFromPotion(20);
+                    // Liczymy faktyczną wartość leczenia
+                    int actualHeal = player->getHp() - hpBefore;
+
+                    // Jeżeli zregenerowaliśmy jakiekolwiek punkty zdrowia wyświetlamy napis nad graczem
+                    if (actualHeal > 0) {
+                        newObjects.push_back(std::make_shared<DamageNumber>(player->getPosition().x, player->getPosition().y - 30.f, actualHeal, false, font, true));
+                    }
                 }
                 bonus->destroy();
             }

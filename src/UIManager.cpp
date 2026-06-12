@@ -1,6 +1,9 @@
 #include "UIManager.h"
+#include "AssetManager.h"
 #include <algorithm>
 #include <cstdlib>
+#include <cmath>
+#include<iostream>
 
 UIManager::UIManager() {
     // Inicjalizacja wszystkich obiektów interfejsu
@@ -20,11 +23,85 @@ UIManager::UIManager() {
 
     if(font.loadFromFile("assets/fonts/PixelGame.otf")) {
         sf::FloatRect tb;
+        // Inicjalizacja tła z nową grafiką
+        auto tloTex = AssetManager::loadTexture("assets/menu/menu_tlo.png");
+        if (tloTex) {
+            menuBackgroundSprite.setTexture(*tloTex);
+            // Przeskalowanie do rozmiarów okna (1280x720)
+            menuBackgroundSprite.setScale(
+                1280.f / tloTex->getSize().x,
+                720.f / tloTex->getSize().y
+                );
+        }
+        // Ładowanie arkuszy przycisków
+        auto texGreen = AssetManager::loadTexture("assets/menu/Green_Buttons_Pixel.png");
+        auto texRed = AssetManager::loadTexture("assets/menu/Red_Buttons_Pixel.png");
+        auto texBlue = AssetManager::loadTexture("assets/menu/Blue_Buttons_Pixel.png");
+        auto texPurple = AssetManager::loadTexture("assets/menu/Purple_Buttons_Pixel.png");
+        // Pomocnicza funkcja lambda ułatwiająca ustawienie sprite'a przycisku
+        auto setupButton = [](sf::Sprite& sprite, sf::Texture* tex, int x, int y, int w, int h, float posX, float posY) {
+            if(tex) sprite.setTexture(*tex);
+            sprite.setTextureRect(sf::IntRect(x, y, w, h));
+            sf::FloatRect bounds = sprite.getLocalBounds();
+            sprite.setOrigin(bounds.left + bounds.width / 2.f, bounds.top + bounds.height / 2.f);
+            sprite.setPosition(posX, posY);
+            sprite.setScale(3.f, 3.f); // Powiększenie sprite'a
+        };
+
+        // Menu główne
+        setupButton(btnStartSprite, texGreen.get(), 160, 47, 32, 17, 640.f, 280.f);     // START
+        setupButton(btnOptionsSprite, texPurple.get(), 0, 96, 48, 16, 640.f, 360.f);  // OPTIONS
+        setupButton(btnScoresSprite, texBlue.get(), 240, 127, 32, 17, 640.f, 440.f);   // SCORE
+        setupButton(btnQuitSprite, texRed.get(), 239, 31, 32, 17, 640.f, 520.f);        // QUIT
+
+        // Menu Pauzy
+        setupButton(btnResumeSprite, texGreen.get(), 0, 144, 48, 16, 640.f, 300.f);   // RESUME
+        setupButton(btnPauseReturnSprite, texRed.get(), 192, 47, 32, 17, 640.f, 400.f);// MENU (Back to menu)
+
+        // Pomocnicza funkcja dla mniejszych przycisków (+ / -)
+        auto setupSmallButton = [](sf::Sprite& sprite, sf::Texture* tex, int x, int y, int w, int h, float posX, float posY) {
+            if(tex) sprite.setTexture(*tex);
+            sprite.setTextureRect(sf::IntRect(x, y, w, h));
+            sf::FloatRect bounds = sprite.getLocalBounds();
+            sprite.setOrigin(bounds.left + bounds.width / 2.f, bounds.top + bounds.height / 2.f);
+            sprite.setPosition(posX, posY);
+            sprite.setScale(3.f, 3.f); // Powiększenie sprite'a
+        };
+        // Music: Minus (-) i Plus (+)
+        setupSmallButton(btnMusicMinusSprite, texGreen.get(), 288, 31, 17, 17, 515.f, 525.f);
+        setupSmallButton(btnMusicPlusSprite,  texGreen.get(), 288, 15, 17, 17, 765.f, 525.f);
+
+        // SFX: Minus (-) i Plus (+)
+        setupSmallButton(btnSfxMinusSprite, texGreen.get(), 288, 31, 17, 17, 515.f, 595.f);
+        setupSmallButton(btnSfxPlusSprite,  texGreen.get(), 288, 15, 17, 17, 765.f, 595.f);
+
+        textMusicVol.setFont(font);
+        textMusicVol.setCharacterSize(30);
+        textMusicVol.setPosition(640.f, 525.f);
+
+        textSfxVol.setFont(font);
+        textSfxVol.setCharacterSize(30);
+        textSfxVol.setPosition(640.f, 595.f);
 
         xpLevelText.setFont(font); xpLevelText.setCharacterSize(14); xpLevelText.setFillColor(sf::Color::White);
         timerText.setFont(font); timerText.setCharacterSize(28); timerText.setFillColor(sf::Color(230, 230, 230)); timerText.setOutlineColor(sf::Color(0, 0, 0, 180)); timerText.setOutlineThickness(2.f);
         killCountText.setFont(font); killCountText.setCharacterSize(16); killCountText.setFillColor(sf::Color(220, 200, 200)); killCountText.setOutlineColor(sf::Color::Black); killCountText.setOutlineThickness(1.5f);
-        skullIcon.setSize(sf::Vector2f(14.f, 14.f)); skullIcon.setFillColor(sf::Color(200, 60, 60)); skullIcon.setOutlineColor(sf::Color(80, 0, 0)); skullIcon.setOutlineThickness(1.f);
+        // Czaszka jako kill counter
+        auto skullTex = AssetManager::loadTexture("assets/kill_counter/skull.png");
+        if (skullTex) {
+            skullSprite.setTexture(*skullTex);
+
+            // Ustawienie idealnego środka
+            sf::FloatRect bounds = skullSprite.getLocalBounds();
+            skullSprite.setOrigin(bounds.width / 2.f, bounds.height / 2.f);
+
+            // Wyliczamy dokładną skalę, aby czaszka miała zawsze np. 26 pikseli wysokości
+            float targetHeight = 100.f;
+            float scaleFactor = targetHeight / bounds.height;
+
+            // Aplikujemy wyliczoną małą skalę do sprite'a
+            skullSprite.setScale(scaleFactor, scaleFactor);
+        }
         hudStatsText.setFont(font); hudStatsText.setCharacterSize(14); hudStatsText.setFillColor(sf::Color(190, 190, 190)); hudStatsText.setPosition(10.f, 58.f);
 
         textTitle.setFont(font); textTitle.setString("LEVEL UP! CHOOSE UPGRADE"); textTitle.setCharacterSize(40); textTitle.setFillColor(sf::Color::White);
@@ -35,39 +112,15 @@ UIManager::UIManager() {
 
         menuTitle.setFont(font); menuTitle.setString("ETERNAL NIGHT"); menuTitle.setCharacterSize(80); menuTitle.setFillColor(sf::Color(255, 200, 0));
         tb = menuTitle.getLocalBounds(); menuTitle.setOrigin(tb.left + tb.width / 2.f, tb.top + tb.height / 2.f); menuTitle.setPosition(640.f, 140.f);
-        btnStart.setSize(sf::Vector2f(300.f, 60.f)); btnStart.setPosition(490.f, 300.f); btnStart.setFillColor(sf::Color(50, 50, 100));
-        textStart.setFont(font); textStart.setString("Start game"); textStart.setCharacterSize(30); tb = textStart.getLocalBounds(); textStart.setOrigin(tb.left + tb.width / 2.f, tb.top + tb.height / 2.f); textStart.setPosition(640.f, 330.f);
-        btnQuit.setSize(sf::Vector2f(300.f, 60.f)); btnQuit.setPosition(490.f, 400.f); btnQuit.setFillColor(sf::Color(100, 50, 50));
-        textQuit.setFont(font); textQuit.setString("Quit"); textQuit.setCharacterSize(30); tb = textQuit.getLocalBounds(); textQuit.setOrigin(tb.left + tb.width / 2.f, tb.top + tb.height / 2.f); textQuit.setPosition(640.f, 430.f);
 
         textPaused.setFont(font); textPaused.setString("PAUSE"); textPaused.setCharacterSize(80); textPaused.setFillColor(sf::Color::Yellow);
         tb = textPaused.getLocalBounds(); textPaused.setOrigin(tb.left + tb.width / 2.f, tb.top + tb.height / 2.f); textPaused.setPosition(640.f, 190.f);
-        btnResume.setSize(sf::Vector2f(300.f, 60.f)); btnResume.setPosition(490.f, 300.f); btnResume.setFillColor(sf::Color(50, 100, 50));
-        textResume.setFont(font); textResume.setString("Resume game"); textResume.setCharacterSize(30); tb = textResume.getLocalBounds(); textResume.setOrigin(tb.left + tb.width / 2.f, tb.top + tb.height / 2.f); textResume.setPosition(640.f, 330.f);
-        btnPauseReturn.setSize(sf::Vector2f(300.f, 60.f)); btnPauseReturn.setPosition(490.f, 400.f); btnPauseReturn.setFillColor(sf::Color(100, 50, 50));
-        textPauseReturn.setFont(font); textPauseReturn.setString("Back to menu"); textPauseReturn.setCharacterSize(30); tb = textPauseReturn.getLocalBounds(); textPauseReturn.setOrigin(tb.left + tb.width / 2.f, tb.top + tb.height / 2.f); textPauseReturn.setPosition(640.f, 430.f);
 
-        // Muzyka w menu pauzy
-        btnMusicMinus.setSize(sf::Vector2f(50.f, 50.f)); btnMusicMinus.setPosition(490.f, 500.f); btnMusicMinus.setFillColor(sf::Color(80, 80, 80));
-        textMusicMinus.setFont(font); textMusicMinus.setString("<"); textMusicMinus.setCharacterSize(30);
-        tb = textMusicMinus.getLocalBounds(); textMusicMinus.setOrigin(tb.left + tb.width/2.f, tb.top + tb.height/2.f); textMusicMinus.setPosition(515.f, 525.f);
 
-        btnMusicPlus.setSize(sf::Vector2f(50.f, 50.f)); btnMusicPlus.setPosition(740.f, 500.f); btnMusicPlus.setFillColor(sf::Color(80, 80, 80));
-        textMusicPlus.setFont(font); textMusicPlus.setString(">"); textMusicPlus.setCharacterSize(30);
-        tb = textMusicPlus.getLocalBounds(); textMusicPlus.setOrigin(tb.left + tb.width/2.f, tb.top + tb.height/2.f); textMusicPlus.setPosition(765.f, 525.f);
+        textMusicVol.setString("Music: " + std::to_string(static_cast<int>(std::round(AssetManager::getMusicVolume()))) + "%");
 
-        textMusicVol.setFont(font); textMusicVol.setCharacterSize(30); textMusicVol.setPosition(640.f, 525.f);
 
-        // SFX
-        btnSfxMinus.setSize(sf::Vector2f(50.f, 50.f)); btnSfxMinus.setPosition(490.f, 570.f); btnSfxMinus.setFillColor(sf::Color(80, 80, 80));
-        textSfxMinus.setFont(font); textSfxMinus.setString("<"); textSfxMinus.setCharacterSize(30);
-        tb = textSfxMinus.getLocalBounds(); textSfxMinus.setOrigin(tb.left + tb.width/2.f, tb.top + tb.height/2.f); textSfxMinus.setPosition(515.f, 595.f);
-
-        btnSfxPlus.setSize(sf::Vector2f(50.f, 50.f)); btnSfxPlus.setPosition(740.f, 570.f); btnSfxPlus.setFillColor(sf::Color(80, 80, 80));
-        textSfxPlus.setFont(font); textSfxPlus.setString(">"); textSfxPlus.setCharacterSize(30);
-        tb = textSfxPlus.getLocalBounds(); textSfxPlus.setOrigin(tb.left + tb.width/2.f, tb.top + tb.height/2.f); textSfxPlus.setPosition(765.f, 595.f);
-
-        textSfxVol.setFont(font); textSfxVol.setCharacterSize(30); textSfxVol.setPosition(640.f, 595.f);
+        textSfxVol.setString("SFX: " + std::to_string(static_cast<int>(std::round(AssetManager::getSfxVolume()))) + "%");
 
         textGameOver.setFont(font); textGameOver.setString("You died"); textGameOver.setCharacterSize(80); textGameOver.setFillColor(sf::Color::Red);
         tb = textGameOver.getLocalBounds(); textGameOver.setOrigin(tb.left + tb.width / 2.f, tb.top + tb.height / 2.f); textGameOver.setPosition(640.f, 190.f);
@@ -75,8 +128,6 @@ UIManager::UIManager() {
         btnReturn.setSize(sf::Vector2f(300.f, 60.f)); btnReturn.setPosition(490.f, 450.f); btnReturn.setFillColor(sf::Color(80, 80, 80));
         textReturn.setFont(font); textReturn.setString("Back to menu"); textReturn.setCharacterSize(30); tb = textReturn.getLocalBounds(); textReturn.setOrigin(tb.left + tb.width / 2.f, tb.top + tb.height / 2.f); textReturn.setPosition(640.f, 480.f);
 
-        btnScores.setSize(sf::Vector2f(300.f, 60.f)); btnScores.setPosition(490.f, 500.f); btnScores.setFillColor(sf::Color(30, 80, 30));
-        textBtnScores.setFont(font); textBtnScores.setString("Top 10"); textBtnScores.setCharacterSize(30); tb = textBtnScores.getLocalBounds(); textBtnScores.setOrigin(tb.left + tb.width / 2.f, tb.top + tb.height / 2.f); textBtnScores.setPosition(640.f, 530.f);
 
         textScoresTitle.setFont(font); textScoresTitle.setString("TOP 10 SCORES"); textScoresTitle.setCharacterSize(50); textScoresTitle.setFillColor(sf::Color(255, 200, 0)); tb = textScoresTitle.getLocalBounds(); textScoresTitle.setOrigin(tb.left + tb.width / 2.f, tb.top + tb.height / 2.f); textScoresTitle.setPosition(640.f, 80.f);
         textScoresList.setFont(font); textScoresList.setCharacterSize(22); textScoresList.setFillColor(sf::Color::White); textScoresList.setPosition(300.f, 160.f);
@@ -98,13 +149,20 @@ void UIManager::updateNameInput(const std::string &name) {
 }
 
 // Detekcja kliknięć
-bool UIManager::isStartClicked(sf::Vector2f pos) const { return btnStart.getGlobalBounds().contains(pos); }
-bool UIManager::isQuitClicked(sf::Vector2f pos) const { return btnQuit.getGlobalBounds().contains(pos); }
-bool UIManager::isScoresClicked(sf::Vector2f pos) const { return btnScores.getGlobalBounds().contains(pos); }
-bool UIManager::isResumeClicked(sf::Vector2f pos) const { return btnResume.getGlobalBounds().contains(pos); }
-bool UIManager::isPauseReturnClicked(sf::Vector2f pos) const { return btnPauseReturn.getGlobalBounds().contains(pos); }
-bool UIManager::isGameOverReturnClicked(sf::Vector2f pos) const { return btnReturn.getGlobalBounds().contains(pos); }
-bool UIManager::isScoresReturnClicked(sf::Vector2f pos) const { return btnReturnFromScores.getGlobalBounds().contains(pos); }
+bool UIManager::isStartClicked(sf::Vector2f pos) const { return btnStartSprite.getGlobalBounds().contains(pos); }
+bool UIManager::isQuitClicked(sf::Vector2f pos) const { return btnQuitSprite.getGlobalBounds().contains(pos); }
+bool UIManager::isScoresClicked(sf::Vector2f pos) const { return btnScoresSprite.getGlobalBounds().contains(pos); }
+bool UIManager::isOptionsClicked(sf::Vector2f pos) const { return btnOptionsSprite.getGlobalBounds().contains(pos); }
+bool UIManager::isResumeClicked(sf::Vector2f pos) const { return btnResumeSprite.getGlobalBounds().contains(pos); }
+bool UIManager::isPauseReturnClicked(sf::Vector2f pos) const { return btnPauseReturnSprite.getGlobalBounds().contains(pos); }
+
+bool UIManager::isGameOverReturnClicked(sf::Vector2f pos) const {
+    return btnReturn.getGlobalBounds().contains(pos);
+}
+
+bool UIManager::isScoresReturnClicked(sf::Vector2f pos) const {
+    return btnReturnFromScores.getGlobalBounds().contains(pos);
+}
 
 int UIManager::getClickedUpgrade(sf::Vector2f pos) const {
     if(card1.getGlobalBounds().contains(pos)) return offeredUpgrades[0];
@@ -134,10 +192,31 @@ void UIManager::updateAnnouncement(float deltaTime) {
 
 // Metody renderujące
 void UIManager::renderMainMenu(sf::RenderWindow& window) {
+    // Pobranie pozycji myszy do sprawdzania efektu najechania
+    sf::Vector2f mousePos = window.mapPixelToCoords(sf::Mouse::getPosition(window), window.getDefaultView());
+
+    // Prosty efekt hover
+    auto handleHover = [](sf::Sprite& sp, sf::Vector2f mPos) {
+        if (sp.getGlobalBounds().contains(mPos)) {
+            sp.setScale(3.3f, 3.3f);                      // Lekkie powiększenie
+            sp.setColor(sf::Color(255, 255, 255, 255));   // Maksymalna jasność
+        } else {
+            sp.setScale(3.0f, 3.0f);                      // Zwykła skala
+            sp.setColor(sf::Color(200, 200, 200, 255));   // Lekko przyciemnione
+        }
+    };
+
+    handleHover(btnStartSprite, mousePos);
+    handleHover(btnOptionsSprite, mousePos);
+    handleHover(btnScoresSprite, mousePos);
+    handleHover(btnQuitSprite, mousePos);
+
+    window.draw(menuBackgroundSprite);
     window.draw(menuTitle);
-    window.draw(btnStart); window.draw(textStart);
-    window.draw(btnQuit); window.draw(textQuit);
-    window.draw(btnScores); window.draw(textBtnScores);
+    window.draw(btnStartSprite);
+    window.draw(btnOptionsSprite);
+    window.draw(btnScoresSprite);
+    window.draw(btnQuitSprite);
 }
 
 void UIManager::renderHUD(sf::RenderWindow &window, const std::shared_ptr<Player> &player, float gameTime, WaveManager *waveManager) {
@@ -179,8 +258,9 @@ void UIManager::renderHUD(sf::RenderWindow &window, const std::shared_ptr<Player
     float killTextX = 1240.f - killBounds.width - 20.f;
     killCountText.setPosition(killTextX, 27.f);
     window.draw(killCountText);
-    skullIcon.setPosition(killTextX + killBounds.width + 4.f, 29.f);
-    window.draw(skullIcon);
+
+    skullSprite.setPosition(killTextX + killBounds.width + 20.f, 37.f);
+    window.draw(skullSprite);
 
     int score = static_cast<int>(gameTime * 10) + (player->getEnemiesKilled() * 2);
     std::string statsStr = "SCORE: " + std::to_string(score) +
@@ -267,15 +347,35 @@ void UIManager::renderGameOver(sf::RenderWindow &window, int score, const std::s
 }
 
 void UIManager::renderPause(sf::RenderWindow &window) {
+    sf::Vector2f mousePos = window.mapPixelToCoords(sf::Mouse::getPosition(window), window.getDefaultView());
+
+    auto handleHover = [](sf::Sprite& sp, sf::Vector2f mPos) {
+        if (sp.getGlobalBounds().contains(mPos)) {
+            sp.setScale(3.3f, 3.3f);
+            sp.setColor(sf::Color(255, 255, 255, 255));
+        } else {
+            sp.setScale(3.0f, 3.0f);
+            sp.setColor(sf::Color(200, 200, 200, 255));
+        }
+    };
+    // Obsługa podświetlenia dla starych i nowych przycisków
+    handleHover(btnResumeSprite, mousePos);
+    handleHover(btnPauseReturnSprite, mousePos);
+
+    handleHover(btnMusicMinusSprite, mousePos);
+    handleHover(btnMusicPlusSprite, mousePos);
+    handleHover(btnSfxMinusSprite, mousePos);
+    handleHover(btnSfxPlusSprite, mousePos);
+
     sf::RectangleShape overlay(sf::Vector2f(1280.f, 720.f));
     overlay.setFillColor(sf::Color(0, 0, 0, 180));
     window.draw(overlay);
 
     window.draw(textPaused);
-    window.draw(btnResume); window.draw(textResume);
-    window.draw(btnPauseReturn); window.draw(textPauseReturn);
+    window.draw(btnResumeSprite);
+    window.draw(btnPauseReturnSprite);
 
-    // Aktualizacja i wyśrodkowanie tekstów z wartościami
+    // Aktualizacja tekstów głośności
     textMusicVol.setString("Music: " + std::to_string(static_cast<int>(AssetManager::getMusicVolume())) + "%");
     sf::FloatRect tb = textMusicVol.getLocalBounds();
     textMusicVol.setOrigin(tb.left + tb.width / 2.f, tb.top + tb.height / 2.f);
@@ -285,12 +385,12 @@ void UIManager::renderPause(sf::RenderWindow &window) {
     textSfxVol.setOrigin(tb.left + tb.width / 2.f, tb.top + tb.height / 2.f);
 
     // Rysowanie
-    window.draw(btnMusicMinus); window.draw(textMusicMinus);
-    window.draw(btnMusicPlus); window.draw(textMusicPlus);
+    window.draw(btnMusicMinusSprite);
+    window.draw(btnMusicPlusSprite);
     window.draw(textMusicVol);
 
-    window.draw(btnSfxMinus); window.draw(textSfxMinus);
-    window.draw(btnSfxPlus); window.draw(textSfxPlus);
+    window.draw(btnSfxMinusSprite);
+    window.draw(btnSfxPlusSprite);
     window.draw(textSfxVol);
 }
 
@@ -412,8 +512,71 @@ void UIManager::drawBossHealthBar(sf::RenderWindow& window, int currentHp, int m
 
     window.setView(prevView);
 }
+void UIManager::renderOptions(sf::RenderWindow& window) {
+    // Rysujemy tło z menu głównego dla spójności
+    window.draw(menuBackgroundSprite);
+
+    // Lekka ciemna nakładka, żeby tekst był lepiej widoczny
+    sf::RectangleShape overlay(sf::Vector2f(1280.f, 720.f));
+    overlay.setFillColor(sf::Color(0, 0, 0, 180));
+    window.draw(overlay);
+
+    sf::Vector2f mousePos = window.mapPixelToCoords(sf::Mouse::getPosition(window), window.getDefaultView());
+    auto handleHover = [](sf::Sprite& sp, sf::Vector2f mPos) {
+        if (sp.getGlobalBounds().contains(mPos)) {
+            sp.setScale(3.3f, 3.3f);
+            sp.setColor(sf::Color(255, 255, 255, 255));
+        } else {
+            sp.setScale(3.0f, 3.0f);
+            sp.setColor(sf::Color(200, 200, 200, 255));
+        }
+    };
+
+    // Podświetlenia przycisków
+    handleHover(btnMusicMinusSprite, mousePos);
+    handleHover(btnMusicPlusSprite, mousePos);
+    handleHover(btnSfxMinusSprite, mousePos);
+    handleHover(btnSfxPlusSprite, mousePos);
+
+    // Tytuł ekranu "OPTIONS"
+    sf::Text optTitle = menuTitle;
+    optTitle.setString("OPTIONS");
+    sf::FloatRect tb = optTitle.getLocalBounds();
+    optTitle.setOrigin(tb.left + tb.width / 2.f, tb.top + tb.height / 2.f);
+    optTitle.setPosition(640.f, 150.f);
+    window.draw(optTitle);
+
+    // Aktualizacja tekstów wartości głośności
+    textMusicVol.setString("Music: " + std::to_string(static_cast<int>(std::round(AssetManager::getMusicVolume()))) + "%");
+    tb = textMusicVol.getLocalBounds();
+    textMusicVol.setOrigin(tb.left + tb.width / 2.f, tb.top + tb.height / 2.f);
+
+    textSfxVol.setString("SFX: " + std::to_string(static_cast<int>(std::round(AssetManager::getSfxVolume()))) + "%");
+    tb = textSfxVol.getLocalBounds();
+    textSfxVol.setOrigin(tb.left + tb.width / 2.f, tb.top + tb.height / 2.f);
+
+    // Rysowanie kontrolników
+    window.draw(btnMusicMinusSprite);
+    window.draw(btnMusicPlusSprite);
+    window.draw(textMusicVol);
+
+    window.draw(btnSfxMinusSprite);
+    window.draw(btnSfxPlusSprite);
+    window.draw(textSfxVol);
+
+    // Podpowiedź wyjścia na dole
+    sf::Text escText;
+    escText.setFont(font);
+    escText.setCharacterSize(30);
+    escText.setString("Press ESC to return");
+    escText.setFillColor(sf::Color(200, 200, 200));
+    tb = escText.getLocalBounds();
+    escText.setOrigin(tb.left + tb.width/2.f, tb.top + tb.height/2.f);
+    escText.setPosition(640.f, 650.f);
+    window.draw(escText);
+}
 // Metody sprawdzajace kliknięcia
-bool UIManager::isMusicMinusClicked(sf::Vector2f pos) const { return btnMusicMinus.getGlobalBounds().contains(pos); }
-bool UIManager::isMusicPlusClicked(sf::Vector2f pos) const { return btnMusicPlus.getGlobalBounds().contains(pos); }
-bool UIManager::isSfxMinusClicked(sf::Vector2f pos) const { return btnSfxMinus.getGlobalBounds().contains(pos); }
-bool UIManager::isSfxPlusClicked(sf::Vector2f pos) const { return btnSfxPlus.getGlobalBounds().contains(pos); }
+bool UIManager::isMusicMinusClicked(sf::Vector2f pos) const { return btnMusicMinusSprite.getGlobalBounds().contains(pos); }
+bool UIManager::isMusicPlusClicked(sf::Vector2f pos) const { return btnMusicPlusSprite.getGlobalBounds().contains(pos); }
+bool UIManager::isSfxMinusClicked(sf::Vector2f pos) const { return btnSfxMinusSprite.getGlobalBounds().contains(pos); }
+bool UIManager::isSfxPlusClicked(sf::Vector2f pos) const { return btnSfxPlusSprite.getGlobalBounds().contains(pos); }

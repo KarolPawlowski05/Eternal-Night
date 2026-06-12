@@ -16,6 +16,9 @@ float AssetManager::sfxVolume = 50.f;
 
 void AssetManager::setMusicVolume(float volume) {
     musicVolume = std::clamp(volume, 0.f, 100.f);
+
+    // Zastosowanie krzywej kwadratowej dla naturalnego ściszania
+    float actualVolume = (musicVolume / 100.f) * (musicVolume / 100.f) * 100.f;
     music.setVolume(musicVolume);
 }
 
@@ -83,6 +86,7 @@ void AssetManager::playMusic(const std::string& path, bool loop, float /*volume*
     }
     currentMusicPath = path;
     music.setLoop(loop);
+    float actualVolume = (musicVolume / 100.f) * (musicVolume / 100.f) * 100.f;
     music.setVolume(musicVolume);
     music.play();
 }
@@ -97,11 +101,14 @@ void AssetManager::playSound(const std::string& path, float volume) {
     auto buffer = loadSoundBuffer(path);
     if(!buffer) return;
 
+    // Przeliczenie współczynnika głośności efektów SFX na krzywą kwadratową
+    float sfxFactor = (sfxVolume / 100.f) * (sfxVolume / 100.f);
+
     // Szukanie zatrzymanego slotu
     for(auto& s : soundPool) {
         if(s.getStatus() == sf::Sound::Stopped) {
             s.setBuffer(*buffer);
-            s.setVolume(volume * (sfxVolume / 100.f));
+            s.setVolume(volume * sfxFactor);
             s.play();
             return;
         }
@@ -109,7 +116,7 @@ void AssetManager::playSound(const std::string& path, float volume) {
 
     // tylko gdy wszystkie 32 sloty grają jednocześnie
     soundPool[nextSoundIdx].setBuffer(*buffer);
-    soundPool[nextSoundIdx].setVolume(volume);
+    soundPool[nextSoundIdx].setVolume(volume * sfxFactor);
     soundPool[nextSoundIdx].play();
     nextSoundIdx = (nextSoundIdx + 1) % soundPool.size();
 }

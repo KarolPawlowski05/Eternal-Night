@@ -18,7 +18,7 @@ private:
     // HUD (Timer, zabójstwa, statystyki)
     sf::Text timerText;
     sf::Text killCountText;
-    sf::RectangleShape skullIcon;
+    sf::Sprite skullSprite;
     sf::Text hudStatsText;
 
     // Ekran ulepszeń
@@ -27,10 +27,12 @@ private:
     int offeredUpgrades[3];
 
     // Menu Główne
+    sf::Sprite menuBackgroundSprite;
     sf::Text menuTitle;
-    sf::RectangleShape btnStart;    sf::Text textStart;
-    sf::RectangleShape btnQuit;     sf::Text textQuit;
-    sf::RectangleShape btnScores;   sf::Text textBtnScores;
+    sf::Sprite btnStartSprite;
+    sf::Sprite btnQuitSprite;
+    sf::Sprite btnScoresSprite;
+    sf::Sprite btnOptionsSprite;
 
     // Ogłoszenie fali
     sf::Text waveAnnouncementText;
@@ -44,8 +46,8 @@ private:
 
     // Menu Pauzy
     sf::Text textPaused;
-    sf::RectangleShape btnResume;       sf::Text textResume;
-    sf::RectangleShape btnPauseReturn;  sf::Text textPauseReturn;
+    sf::Sprite btnResumeSprite;
+    sf::Sprite btnPauseReturnSprite;
 
     // Ekran Wyników
     sf::Text textScoresTitle;
@@ -53,10 +55,12 @@ private:
     sf::RectangleShape btnReturnFromScores; sf::Text textReturnFromScores;
 
     // Przyciski do muzyki
-    sf::RectangleShape btnMusicMinus, btnMusicPlus;
-    sf::RectangleShape btnSfxMinus, btnSfxPlus;
-    sf::Text textMusicMinus, textMusicPlus, textMusicVol;
-    sf::Text textSfxMinus, textSfxPlus, textSfxVol;
+    sf::Sprite btnMusicMinusSprite;
+    sf::Sprite btnMusicPlusSprite;
+    sf::Sprite btnSfxMinusSprite;
+    sf::Sprite btnSfxPlusSprite;
+    sf::Text textMusicVol;
+    sf::Text textSfxVol;
     std::shared_ptr<Player> lastPlayer;  // Referencja do gracza dla dynamicznych opisów
 
 public:
@@ -69,6 +73,7 @@ public:
     void renderGameOver(sf::RenderWindow& window, int score, const std::string& playerName, bool nameSaved, int level, int kills, float survivalTime);
     void renderPause(sf::RenderWindow& window);
     void renderScores(sf::RenderWindow& window, const std::string& scoresText);
+    void renderOptions(sf::RenderWindow& window);
 
     // Aktualizacje UI
     void generateUpgrades();
@@ -86,6 +91,7 @@ public:
     bool isPauseReturnClicked(sf::Vector2f pos) const;
     bool isGameOverReturnClicked(sf::Vector2f pos) const;
     bool isScoresReturnClicked(sf::Vector2f pos) const;
+    bool isOptionsClicked(sf::Vector2f pos) const;
 
     // Zwraca ID ulepszenia (lub -1, jeśli nie kliknięto żadnej karty)
     int getClickedUpgrade(sf::Vector2f pos) const;

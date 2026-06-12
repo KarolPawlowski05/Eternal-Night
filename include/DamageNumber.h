@@ -15,10 +15,10 @@ private:
     float vy;           // Predkosc unoszenia sie (px/s)
     float currentScale;
     bool isCrit;
-
+    bool isHeal;
 public:
     // referencja do fontu silnika
-    DamageNumber(float x, float y, int damage, bool isCrit, const sf::Font& font);
+    DamageNumber(float x, float y, int damage, bool isCrit, const sf::Font& font, bool isHeal = false);
 
     void update(float deltaTime) override;
     void draw(sf::RenderWindow& window) override;
