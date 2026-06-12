@@ -32,6 +32,11 @@ private:
     sf::RectangleShape btnQuit;     sf::Text textQuit;
     sf::RectangleShape btnScores;   sf::Text textBtnScores;
 
+    // Ogłoszenie fali
+    sf::Text waveAnnouncementText;
+    float waveAnnouncementTimer = 2.8f;
+    static constexpr float ANNOUNCEMENT_DURATION = 2.8f;
+
     // Ekran Śmierci
     sf::Text textGameOver;          sf::Text textFinalScore;
     sf::RectangleShape btnReturn;   sf::Text textReturn;
@@ -61,13 +66,17 @@ public:
     void renderMainMenu(sf::RenderWindow& window);
     void renderHUD(sf::RenderWindow& window, const std::shared_ptr<Player>& player, float gameTime, WaveManager* waveManager);
     void renderLevelUp(sf::RenderWindow& window);
-    void renderGameOver(sf::RenderWindow& window, int score, const std::string& playerName, bool nameSaved);
+    void renderGameOver(sf::RenderWindow& window, int score, const std::string& playerName, bool nameSaved, int level, int kills, float survivalTime);
     void renderPause(sf::RenderWindow& window);
     void renderScores(sf::RenderWindow& window, const std::string& scoresText);
 
     // Aktualizacje UI
     void generateUpgrades();
     void updateNameInput(const std::string& name);
+
+    // Ogłoszenie fali
+    void showWaveAnnouncement(int waveNumber, bool isBoss);
+    void updateAnnouncement(float deltaTime);
 
     // Sprawdzanie kliknięć (zwracają true, jeśli punkt pos znajduje się na przycisku)
     bool isStartClicked(sf::Vector2f pos) const;

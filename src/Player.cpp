@@ -48,6 +48,15 @@ Player::Player(float x, float y)
     health.specialCooldownBarForeground.setFillColor(sf::Color(255, 0, 255)); // Magenta (Kusza)
     health.specialCooldownBarForeground.setOrigin(25.f, 2.f);
 
+    // Pasek cooldownu dasha
+    health.dashCooldownBarBackground.setSize(sf::Vector2f(50.f, 4.f));
+    health.dashCooldownBarBackground.setFillColor(sf::Color(0, 0, 60));
+    health.dashCooldownBarBackground.setOrigin(25.f, 2.f);
+
+    health.dashCooldownBarForeground.setSize(sf::Vector2f(50.f, 4.f));
+    health.dashCooldownBarForeground.setFillColor(sf::Color(80, 140, 255));
+    health.dashCooldownBarForeground.setOrigin(25.f, 2.f);
+
     // Konfiguracja wskaźnika ataku (pomocniczy hitbox)
     combat.attackIndicator.setSize(combat.attackSize);
     combat.attackIndicator.setOrigin(0.f, combat.attackSize.y / 2.f);
@@ -421,6 +430,14 @@ void Player::update(float deltaTime) {
     health.specialCooldownBarForeground.setSize(sf::Vector2f(50.f * spPercent, 4.f));
     health.specialCooldownBarBackground.setPosition(position.x, position.y + 44.f);
     health.specialCooldownBarForeground.setPosition(position.x, position.y + 44.f);
+
+    // Pasek dasha (niebieski)
+    float dashPercent = std::min(1.f, movement.dashTimer / movement.dashCooldown);
+    health.dashCooldownBarForeground.setSize(sf::Vector2f(50.f * dashPercent, 4.f));
+    // Kolor: szary gdy w trakcie dasha, niebieski gdy gotowy
+    health.dashCooldownBarForeground.setFillColor(dashPercent >= 1.f ? sf::Color(80, 200, 255) : sf::Color(50, 80, 160));
+    health.dashCooldownBarBackground.setPosition(position.x, position.y + 50.f);
+    health.dashCooldownBarForeground.setPosition(position.x, position.y + 50.f);
 }
 
 void Player::draw(sf::RenderWindow& window) {
@@ -430,6 +447,8 @@ void Player::draw(sf::RenderWindow& window) {
     window.draw(health.attackCooldownBarForeground);
     window.draw(health.specialCooldownBarBackground);
     window.draw(health.specialCooldownBarForeground);
+    window.draw(health.dashCooldownBarBackground);
+    window.draw(health.dashCooldownBarForeground);
     if (weapons.hasFireAura) window.draw(weapons.fireAuraShape);
     if (weapons.hasOrbitingSword) {
         float angleStep = 360.f / weapons.swordCount; // Kąt między poszczególnymi mieczami

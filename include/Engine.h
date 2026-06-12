@@ -2,9 +2,7 @@
 #define ENGINE_H
 
 #include <SFML/Graphics.hpp>
-#include <vector>
 #include <memory>
-#include "GameObject.h"
 #include "WaveManager.h"
 #include "ScoreManager.h"
 #include "MapManager.h"
@@ -30,6 +28,12 @@ private:
     void renderGame();
 
     GameState currentState;
+
+    // Screen shake
+    float shakeDuration = 0.f;
+    float shakeIntensity = 0.f;
+    float prevPlayerInvTimer = 0.f;
+    void triggerShake(float duration, float intensity);
 
     // Debug overlay (klawisz F3)
     bool debugMode;

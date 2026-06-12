@@ -372,6 +372,13 @@ void Engine::update(float deltaTime) {
 
         waveManager->acknowledgeSpawnedPotions();
     }
+
+    // Screen shake przy obrażeniach
+    float currentInvTimer = player->getInvincibilityTimer();
+    if(currentInvTimer > 0.f && prevPlayerInvTimer <= 0.f) {
+        triggerShake(0.28f, 7.f);
+    }
+    prevPlayerInvTimer = currentInvTimer;
 }
 
 void Engine::render() {
@@ -393,7 +400,14 @@ void Engine::render() {
     } else {
         //  KAMERA ŚWIATA (Podąża za graczem)
         gameView.setSize(1280.f, 720.f);
-        gameView.setCenter(player->getPosition());
+        sf::Vector2f viewCenter = player->getPosition();
+        if (shakeDuration > 0.f) {
+            shakeDuration -= 0.016f; // Przyblizony deltaTime
+            float ox = static_cast<float>((rand() % 2 == 0 ? 1 : -1) * (rand() % static_cast<int>(shakeIntensity)));
+            float oy = static_cast<float>((rand() % 2 == 0 ? 1 : -1) * (rand() % static_cast<int>(shakeIntensity)));
+            viewCenter += sf::Vector2f(ox, oy);
+        }
+        gameView.setCenter(viewCenter);
         window.setView(gameView);
 
         // RYSOWANIE GRY (Dla stanów PLAYING, LEVEL_UP, GAME_OVER)
@@ -403,6 +417,14 @@ void Engine::render() {
         entityManager.renderAll(window);
         // Rysowanie hitboxów musi odbywać się w świecie gry
         if(debugMode) drawDebugOverlay();
+        // Winietka niskiego HP (pulsująca na < 30% HP)
+        if (player->getHp() < player->getMaxHp() * 0.30f && !player->getGodMode()) {
+            float pulse = (std::sin(gameTime * 4.f) + 1.f) * 0.5f; // 0..1
+            sf::RectangleShape vignette(sf::Vector2f(1280.f, 720.f));
+            vignette.setFillColor(sf::Color(180, 0, 0, static_cast<sf::Uint8>(55 + pulse * 85)));
+            window.setView(window.getDefaultView());
+            window.draw(vignette);
+        }
         // Kamera interfejsu
         window.setView(window.getDefaultView());
         uiManager.renderHUD(window, player, gameTime, waveManager.get());
@@ -415,11 +437,16 @@ void Engine::render() {
         if      (currentState == GameState::LEVEL_UP)   uiManager.renderLevelUp(window);
         else if (currentState == GameState::GAME_OVER) {
             int score = static_cast<int>(gameTime * 10) + (player->getEnemiesKilled() * 2);
-            uiManager.renderGameOver(window, score, playerName, nameSaved);
+            uiManager.renderGameOver(window, score, playerName, nameSaved, player->getLevel(), player->getEnemiesKilled(), gameTime);
         }
         else if (currentState == GameState::PAUSED)     uiManager.renderPause(window);
     }
     window.display();
+}
+
+void Engine::triggerShake(float duration, float intensity) {
+    shakeDuration = duration;
+    shakeIntensity = intensity;
 }
 
 void Engine::run() {
@@ -433,7 +460,15 @@ void Engine::run() {
             update(deltaTime);
 
             gameTime += deltaTime;
-            if(waveManager) waveManager->update(deltaTime);
+            if (waveManager) {
+                bool waveSpawned = waveManager->update(deltaTime);
+                if (waveSpawned) {
+                    int spawnedWave = waveManager->getCurrentWave() - 1;
+                    uiManager.showWaveAnnouncement(spawnedWave, waveManager->getLastWasBoss());
+                    if (waveManager->getLastWasBoss()) triggerShake(0.5f, 12.f);
+                }
+                uiManager.updateAnnouncement(deltaTime);
+            }
         }
 
         render();

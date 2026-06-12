@@ -85,6 +85,8 @@ UIManager::UIManager() {
 
         textEnterName.setFont(font); textEnterName.setString("Enter your name:"); textEnterName.setCharacterSize(28); textEnterName.setFillColor(sf::Color::White); tb = textEnterName.getLocalBounds(); textEnterName.setOrigin(tb.left + tb.width / 2.f, tb.top + tb.height / 2.f); textEnterName.setPosition(640.f, 400.f);
         textNameInput.setFont(font); textNameInput.setCharacterSize(32); textNameInput.setFillColor(sf::Color(255, 200, 0)); textNameInput.setPosition(640.f, 440.f);
+
+        waveAnnouncementText.setFont(font); waveAnnouncementText.setCharacterSize(56); waveAnnouncementText.setOutlineThickness(3.f); waveAnnouncementText.setOutlineColor(sf::Color::Black);
     }
 }
 
@@ -109,6 +111,25 @@ int UIManager::getClickedUpgrade(sf::Vector2f pos) const {
     if(card2.getGlobalBounds().contains(pos)) return offeredUpgrades[1];
     if(card3.getGlobalBounds().contains(pos)) return offeredUpgrades[2];
     return -1;
+}
+
+// Ogłoszenia fal i bossow
+void UIManager::showWaveAnnouncement(int waveNumber, bool isBoss) {
+    waveAnnouncementTimer = ANNOUNCEMENT_DURATION;
+    if(isBoss) {
+        waveAnnouncementText.setString("BOSS INCOMING");
+        waveAnnouncementText.setFillColor(sf::Color(255, 50, 50));
+    } else {
+        waveAnnouncementText.setString("Wave " + std::to_string(waveNumber));
+        waveAnnouncementText.setFillColor(sf::Color(255, 200, 0));
+    }
+    sf::FloatRect tb = waveAnnouncementText.getLocalBounds();
+    waveAnnouncementText.setOrigin(tb.left + tb.width / 2.f, tb.top + tb.height / 2.f);
+    waveAnnouncementText.setPosition(640.f, 200.f);
+}
+
+void UIManager::updateAnnouncement(float deltaTime) {
+    if(waveAnnouncementTimer > 0.f) waveAnnouncementTimer -= deltaTime;
 }
 
 // Metody renderujące
@@ -173,6 +194,18 @@ void UIManager::renderHUD(sf::RenderWindow &window, const std::shared_ptr<Player
                            "\nSPEED: " + std::to_string(static_cast<int>(player->getSpeed()));
     hudStatsText.setString(statsStr);
     window.draw(hudStatsText);
+
+    if(waveAnnouncementTimer > 0.f) {
+        float progress = waveAnnouncementTimer / ANNOUNCEMENT_DURATION;
+        sf::Uint8 alpha = static_cast<sf::Uint8>(std::min(1.f, progress * 3.f) * 255);
+        sf::Color col = waveAnnouncementText.getFillColor();
+        col.a = alpha;
+        waveAnnouncementText.setFillColor(col);
+        sf::Color outlineCol = waveAnnouncementText.getOutlineColor();
+        outlineCol.a = alpha;
+        waveAnnouncementText.setOutlineColor(outlineCol);
+        window.draw(waveAnnouncementText);
+    }
 }
 
 void UIManager::renderLevelUp(sf::RenderWindow &window) {
@@ -186,17 +219,35 @@ void UIManager::renderLevelUp(sf::RenderWindow &window) {
     window.draw(textTitle);
 }
 
-void UIManager::renderGameOver(sf::RenderWindow &window, int score, const std::string &playerName, bool nameSaved) {
+void UIManager::renderGameOver(sf::RenderWindow &window, int score, const std::string &playerName, bool nameSaved, int level, int kills, float survivalTime) {
     sf::RectangleShape overlay(sf::Vector2f(1280.f, 720.f));
     overlay.setFillColor(sf::Color(0, 0, 0, 220));
     window.draw(overlay);
 
     window.draw(textGameOver);
-    textFinalScore.setString("Your final score: " + std::to_string(score));
+
+    // Wynik końcowy
+    textFinalScore.setString("Score: " + std::to_string(score));
     sf::FloatRect scoreBounds = textFinalScore.getLocalBounds();
     textFinalScore.setOrigin(scoreBounds.left + scoreBounds.width / 2.f, scoreBounds.top + scoreBounds.height / 2.f);
-
+    textFinalScore.setPosition(640.f, 300.f);
     window.draw(textFinalScore);
+
+    // Statystyki rundy
+    int minutes = static_cast<int>(survivalTime) / 60;
+    int seconds = static_cast<int>(survivalTime) % 60;
+    std::string timeStr = (minutes < 10 ? "0" : "") + std::to_string(minutes) + ":" + (seconds < 10 ? "0" : "") + std::to_string(seconds);
+
+    sf::Text statsText;
+    statsText.setFont(font);
+    statsText.setCharacterSize(20);
+    statsText.setFillColor(sf::Color(200, 200, 200));
+    statsText.setString("Time: " + timeStr = "    Level: " + std::to_string(level) + "    Kills: " + std::to_string(kills));
+    sf::FloatRect stb = statsText.getLocalBounds();
+    statsText.setOrigin(stb.left + stb.width / 2.f, stb.top + stb.height / 2.f);
+    statsText.setPosition(640.f, 345.f);
+    window.draw(statsText);
+
     window.draw(btnReturn); window.draw(textReturn);
 
     if (!nameSaved) {

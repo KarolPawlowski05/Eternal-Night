@@ -28,6 +28,7 @@ private:
 
     float potionSpawnTimer = 0.f;
     int lastPotionWave = 0;  // Śledzenie ostatniej fali ze spawnem
+    bool lastWasBoss = false;
 public:
     WaveManager(std::shared_ptr<Player> player, std::vector<std::shared_ptr<GameObject>>& objects);
 
@@ -45,6 +46,7 @@ public:
 
     std::shared_ptr<Boss> getActiveBoss() const { return activeBoss; }
     void toggleSpawning();
+    bool getLastWasBoss() const { return lastWasBoss; }
 
     // Sprawdzenie czy powinien respić sie health potion
     bool shouldRespawnPotions() const { return currentWave - lastPotionWave >= 3; }

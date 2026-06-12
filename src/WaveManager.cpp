@@ -65,8 +65,9 @@ bool WaveManager::update(float deltaTime) {
         // Generowanie przeciwników na ten moment
         if (spawnBoss) {
             bossesSpawned++;
-            float spawnX = player->getPosition().x + 1000.f;
-            float spawnY = player->getPosition().y + 1000.f;
+            float bossAngle = (rand() % 360) * 3.14159f / 180.f;
+            float spawnX = player->getPosition().x + std::cos(bossAngle) * 1200.f;
+            float spawnY = player->getPosition().y + std::sin(bossAngle) * 1200.f;
 
             activeBoss = std::make_shared<Boss>(spawnX, spawnY, bType, player, scaling);
             gameObjects.push_back(activeBoss);
@@ -75,6 +76,7 @@ bool WaveManager::update(float deltaTime) {
             spawnWave(); // Respi chmarę tylko jeśli nie ma bossa
         }
 
+        lastWasBoss = spawnBoss;
         currentWave++;
         waveTimer = 0.f;
         waveSpawned = true;
@@ -89,8 +91,6 @@ void WaveManager::spawnWave() {
     float hpM    = 1.0f + (currentWave * 0.15f);
     float speedM = 1.0f + (currentWave * 0.04f);
 
-    //Info o fali dla debuggingu
-    printf("Wave %d: Enemy HP x%.2f, Speed x%.2f\n", currentWave, hpM, speedM);
     sf::Vector2f center = player->getPosition();
     constexpr float SPAWN_RADIUS = 700.f;
 

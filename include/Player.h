@@ -46,6 +46,7 @@ public:
     bool getWantsToShootSpecial() const { return combat.wantsToShootSpecial; }
     void resetSpecialShot() { combat.wantsToShootSpecial = false; }
     int getDamage(int baseDamage, bool* wasCrit = nullptr) const;
+    float getInvincibilityTimer() const { return health.invincibilityTimer; }
 
     // Ruch
     sf::Vector2f getPosition() const { return position; }

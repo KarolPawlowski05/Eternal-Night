@@ -80,6 +80,8 @@ struct HealthData {
     sf::RectangleShape attackCooldownBarForeground;
     sf::RectangleShape specialCooldownBarBackground;
     sf::RectangleShape specialCooldownBarForeground;
+    sf::RectangleShape dashCooldownBarBackground;
+    sf::RectangleShape dashCooldownBarForeground;
 
     HealthData();
 };
