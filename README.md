@@ -1,5 +1,7 @@
 # 🌙 Eternal Night
 
+link do filmu - https://youtu.be/DQ-lgpLIVcw
+
 **Eternal Night** to dynamiczna gra typu **Roguelite Arena Survival** stworzona w C++. Przetrwaj niekończące się fale przeciwników, rozwijaj swoją postać, zdobywaj potężne ulepszenia i walcz z bossami w świecie pogrążonym w wiecznej nocy.
 
 ## ⚔️ Główne Funkcje
